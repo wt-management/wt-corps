@@ -153,6 +153,8 @@ function esc(s){return(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;',
 function today(){return new Date().toISOString().slice(0,10);}
 function ym(d){return String(d||'').slice(0,7);}
 function curYm(){return today().slice(0,7);}
+function lastDataYm(){const ms=[...(D.sales||[]).map(s=>ym(s.date)),...(D.expenses||[]).map(e=>e.ym),...(D.funds||[]).map(f=>ym(f.date))].filter(Boolean);return ms.length?ms.sort().reverse()[0]:'';}
+function refYm(){const c=curYm(),l=lastDataYm();return(l&&l<c)?l:c;}   // 기준월=min(달력월,데이터마지막월) — 월초 빈달 방지
 function fm(n){n=Number(n)||0;return SYM+n.toLocaleString(undefined,{maximumFractionDigits:0});}
 function fkrw(n){const w=(Number(n)||0)*(D.rate||0);if(!w)return'';if(Math.abs(w)>=1e8)return'₩'+(w/1e8).toFixed(1)+'억';if(Math.abs(w)>=1e4)return'₩'+Math.round(w/1e4).toLocaleString()+'만';return'₩'+Math.round(w).toLocaleString();}
 function fboth(n){return fm(n)+(D.rate?' <span class="muted" style="font-size:11px">'+fkrw(n)+'</span>':'');}
@@ -170,7 +172,7 @@ function isEmpty(){return !(D.sales||[]).length&&!(D.orders||[]).length&&!(D.fun
 
 // ── 대시보드 ──
 function vDash(){
-  const cy=curYm();
+  const cy=refYm();
   const sM=(D.sales||[]).filter(s=>ym(s.date)===cy).reduce((a,s)=>a+(+s.amt||0),0);
   const sY=(D.sales||[]).filter(s=>String(s.date||'').slice(0,4)===cy.slice(0,4)).reduce((a,s)=>a+(+s.amt||0),0);
   const backlog=(D.orders||[]).filter(o=>o.status!=='납품완료'&&o.status!=='취소');
@@ -320,7 +322,7 @@ function mFund(id){const f=id?(D.funds||[]).find(x=>x.id===id):{date:today(),kin
 // ── 비용·인건비 ──
 function vExp(){
   const L=(D.expenses||[]).slice().sort((a,b)=>(b.ym||'').localeCompare(a.ym||''));
-  const cy=curYm();
+  const cy=refYm();
   const byCat={};L.filter(e=>e.ym===cy).forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+(+e.amt||0);});
   const mTot=Object.values(byCat).reduce((a,b)=>a+b,0);const mx=Math.max(1,...Object.values(byCat));
   const catBars=EXP_CATS.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 0"><div style="width:70px;font-size:12.5px;font-weight:600">${c}</div><div class="bar" style="flex:1"><i style="width:${(byCat[c]||0)/mx*100}%"></i></div><div style="width:110px;text-align:right;font-size:12px"><b>${fm(byCat[c]||0)}</b></div></div>`).join('');
