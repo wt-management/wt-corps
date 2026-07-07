@@ -1228,67 +1228,78 @@ function vHQ(){
   var ag90=(D.sales||[]).reduce(function(a,x){return a+(agingBucket(x)==='90+'?outAmt(x):0);},0);
   var ar90pct=out?ag90/out*100:0;
   var low=(D.items||[]).filter(function(i){return itemQty(i.name)<(+i.safety||0);});
-  // 신호등 스코어카드
   var sc=[
-    {ic:'🎯',l:jt('목표 달성률','Target Achv.'),v:yTgt?achv.toFixed(0)+'%':'-',s:achv>=100?'g':achv>=70?'y':'r',sub:jt('누적','YTD')+' '+fmS(ySale)+' / '+fmS(yTgt),go:"setView('report')"},
-    {ic:'💰',l:jt('수금률','Collection'),v:ySale?payRate.toFixed(0)+'%':'-',s:payRate>=90?'g':payRate>=65?'y':'r',sub:jt('수금','collected')+' '+fmS(yPay),go:"setView('sales')"},
-    {ic:'⏳',l:jt('미수 건전성','AR Health'),v:fmS(out),s:ar90pct<10?'g':ar90pct<30?'y':'r',sub:'90d+ '+ar90pct.toFixed(0)+'%',go:"setView('ar')"},
-    {ic:'🏦',l:jt('자금 여력','Liquidity'),v:fmS(bal),s:bal>50000?'g':bal>0?'y':'r',sub:fkrw(bal),go:"setView('funds')"},
-    {ic:'📦',l:jt('재고 상태','Inventory'),v:low.length?low.length+jt('개 부족',' low'):jt('정상','OK'),s:low.length===0?'g':low.length<=2?'y':'r',sub:jt('전체','of')+' '+(D.items||[]).length,go:"setView('inv')"}
+    {ic:'🎯',l:jt('목표 달성률','Target Achv.'),v:yTgt?achv.toFixed(0)+'%':'-',s:achv>=100?'g':achv>=70?'y':'r',sub:jt('누적','YTD')+' '+fmS(ySale)+' / '+fmS(yTgt),why:jt('목표 대비 70% 미만','below 70% of target'),go:"setView('report')"},
+    {ic:'💰',l:jt('수금률','Collection'),v:ySale?payRate.toFixed(0)+'%':'-',s:payRate>=90?'g':payRate>=65?'y':'r',sub:jt('수금','collected')+' '+fmS(yPay),why:jt('수금률 90% 미만','collection under 90%'),go:"setView('sales')"},
+    {ic:'⏳',l:jt('미수 건전성','AR Health'),v:fmS(out),s:ar90pct<10?'g':ar90pct<30?'y':'r',sub:'90d+ '+ar90pct.toFixed(0)+'% · '+fmS(ag90),why:jt('90일+ 장기미수 비중 높음','high 90d+ AR ratio'),go:"setView('ar')"},
+    {ic:'🏦',l:jt('자금 여력','Liquidity'),v:fmS(bal),s:bal>50000?'g':bal>0?'y':'r',sub:fkrw(bal),why:jt('자금 잔액 낮음','low cash balance'),go:"setView('funds')"},
+    {ic:'📦',l:jt('재고 상태','Inventory'),v:low.length?low.length+jt('개 부족',' low'):jt('정상','OK'),s:low.length===0?'g':low.length<=2?'y':'r',sub:jt('전체','of')+' '+(D.items||[]).length+jt('품목',' items'),why:jt('안전재고 미달 품목','items below safety'),go:"setView('inv')"}
   ];
-  var overall=sc.filter(function(x){return x.s==='r';}).length?'r':sc.filter(function(x){return x.s==='y';}).length?'y':'g';
+  var reds=sc.filter(function(x){return x.s==='r';}),yels=sc.filter(function(x){return x.s==='y';});
+  var overall=reds.length?'r':yels.length?'y':'g';
   var ovLabel=overall==='g'?jt('양호 · 순항 중','Healthy'):overall==='y'?jt('주의 관찰','Watch'):jt('경고 · 조치 필요','Action needed');
   var scHtml=sc.map(function(c){var col=_hqLightColor(c.s);
     return `<div onclick="${c.go}" style="background:#fff;border:1px solid var(--line);border-left:4px solid ${col};border-radius:12px;padding:13px 15px;cursor:pointer;box-shadow:var(--sh)">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><span>${c.ic}</span><span style="font-size:11.5px;color:var(--muted);font-weight:600">${c.l}</span><span style="margin-left:auto;width:10px;height:10px;border-radius:50%;background:${col}"></span></div>
       <div style="font-size:20px;font-weight:800;color:var(--ink);line-height:1">${c.v}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:5px">${c.sub}</div></div>`;}).join('');
+  // 조치 필요 사유 배너
+  var issues=reds.concat(yels);
+  var issueBanner=issues.length?`<div class="card" style="margin-bottom:14px;border-left:4px solid ${_hqLightColor(overall)};padding:12px 16px"><div style="font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px">${overall==='r'?'🔴':'🟡'} ${jt('점검 필요 항목','Items to review')} (${issues.length})</div><div style="display:flex;flex-wrap:wrap;gap:8px">${issues.map(function(c){return `<span onclick="${c.go}" style="cursor:pointer;font-size:12px;background:${_hqLightColor(c.s)}18;color:${_hqLightColor(c.s)};border-radius:7px;padding:4px 10px;font-weight:600">${c.ic} ${c.l} · ${c.v}</span>`;}).join('')}</div></div>`:`<div class="card" style="margin-bottom:14px;border-left:4px solid #16a34a;padding:12px 16px;font-size:12.5px;color:var(--ok);font-weight:600">🟢 ${jt('모든 지표 양호 — 특이사항 없음','All indicators healthy')}</div>`;
   // 원화 환산
-  var krwRow=function(label,usd,go){return `<div ${go?`onclick="${go}" style="cursor:pointer"`:''} style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)"><span style="font-size:12.5px;color:var(--body)">${label}</span><span style="text-align:right"><b style="color:var(--ink)">${fm(usd)}</b> <span class="muted" style="font-size:11.5px">${fkrw(usd)}</span></span></div>`;};
+  var krwRow=function(label,usd,go){return `<div onclick="${go}" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)"><span style="font-size:12.5px;color:var(--body)">${label}</span><span style="text-align:right"><b style="color:var(--ink)">${fm(usd)}</b> <span class="muted" style="font-size:11.5px">${fkrw(usd)}</span></span></div>`;};
   var krw=`<div class="card"><div class="sect"><span>💱 ${jt('원화 환산 종합','KRW Consolidated')}</span><span class="muted" style="font-size:11.5px;cursor:pointer" onclick="setRate()">${SYM}1 = ₩${(D.rate||0).toLocaleString()} ✎</span></div>
     ${krwRow(jt('연 누적 매출','YTD Revenue'),ySale,"setView('sales')")}
     ${krwRow(jt('연 누적 수금','YTD Collections'),yPay,"setView('sales')")}
     ${krwRow(jt('미수채권','Receivables'),out,"setView('ar')")}
     ${krwRow(jt('자금 잔액','Cash Balance'),bal,"setView('funds')")}
-    <div style="font-size:11px;color:var(--muted);margin-top:8px">${jt('환율은 대시보드/전 화면 원화 병기에 공통 적용','FX applies to KRW figures across all screens')}</div></div>`;
-  // 본사↔법인 자금 (자금관리 데이터 연동)
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">${jt('환율은 전 화면 원화 병기에 공통 적용','FX applies across all KRW figures')}</div></div>`;
+  // 본사↔법인 자금
   var hqIn=(D.funds||[]).filter(function(f){return f.kind==='입금'&&/본사|hq|remit|본점/i.test((f.category||'')+' '+(f.memo||''));});
   var hqOut=(D.funds||[]).filter(function(f){return f.kind==='출금'&&/본사|정산|배당|dividend|settle|본점/i.test((f.category||'')+' '+(f.memo||''));});
-  var inSum=hqIn.reduce(function(a,f){return a+(+f.amt||0);},0),outSum=hqOut.reduce(function(a,f){return a+(+f.amt||0);},0);
-  var net=inSum-outSum;
-  var flowRows=(hqIn.concat(hqOut)).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,6).map(function(f){var isIn=f.kind==='입금';
-    return `<div style="display:flex;gap:9px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px"><span class="muted">${f.date}</span><span class="chip ${isIn?'c-blue':'c-gray'}">${isIn?jt('본사 투입','HQ in'):jt('본사 회수','HQ out')}</span><span style="flex:1">${esc(f.category||f.memo||'')}</span><b style="color:${isIn?'#2563eb':'var(--body)'}">${isIn?'+':'-'}${fm(f.amt)}</b></div>`;}).join('')||('<div class="empty">'+jt('본사 자금 이동 없음 · 자금관리에서 항목명에 "본사" 포함해 등록','No HQ transfers · tag category with "본사/HQ" in Cash Mgmt')+'</div>');
+  var inSum=hqIn.reduce(function(a,f){return a+(+f.amt||0);},0),outSum=hqOut.reduce(function(a,f){return a+(+f.amt||0);},0),net=inSum-outSum;
+  var flowRows=(hqIn.concat(hqOut)).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,5).map(function(f){var isIn=f.kind==='입금';
+    return `<div style="display:flex;gap:9px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px"><span class="muted">${f.date}</span><span class="chip ${isIn?'c-blue':'c-gray'}">${isIn?jt('투입','in'):jt('회수','out')}</span><span style="flex:1">${esc(f.category||f.memo||'')}</span><b style="color:${isIn?'#2563eb':'var(--body)'}">${isIn?'+':'-'}${fm(f.amt)}</b></div>`;}).join('')||('<div class="empty" style="font-size:11.5px">'+jt('자금관리에서 항목명에 "본사" 포함해 등록하면 집계됩니다','Tag category with "본사/HQ" in Cash Mgmt')+'</div>');
   var hqFund=`<div class="card"><div class="sect"><span>🔄 ${jt('본사 ↔ 법인 자금','HQ ↔ Subsidiary')}</span><span class="muted" style="font-size:11.5px;cursor:pointer" onclick="setView('funds')">${jt('자금관리','Cash Mgmt')} →</span></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;margin-bottom:6px">
-      <div><div class="muted" style="font-size:11px">${jt('본사 투입 (누계)','HQ Injected')}</div><div style="font-size:18px;font-weight:800;color:#2563eb">+${fmS(inSum)}</div></div>
-      <div style="border-left:1px solid var(--line);border-right:1px solid var(--line)"><div class="muted" style="font-size:11px">${jt('본사 회수 (누계)','Returned')}</div><div style="font-size:18px;font-weight:800;color:var(--body)">-${fmS(outSum)}</div></div>
-      <div><div class="muted" style="font-size:11px">${jt('순 투자액','Net Invested')}</div><div style="font-size:18px;font-weight:800;color:var(--ink)">${fmS(net)}</div><div class="muted" style="font-size:10.5px">${fkrw(net)}</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;margin-bottom:8px">
+      <div><div class="muted" style="font-size:11px">${jt('본사 투입','Injected')}</div><div style="font-size:18px;font-weight:800;color:#2563eb">+${fmS(inSum)}</div></div>
+      <div style="border-left:1px solid var(--line);border-right:1px solid var(--line)"><div class="muted" style="font-size:11px">${jt('회수','Returned')}</div><div style="font-size:18px;font-weight:800;color:var(--body)">-${fmS(outSum)}</div></div>
+      <div><div class="muted" style="font-size:11px">${jt('순 투자','Net')}</div><div style="font-size:18px;font-weight:800;color:var(--ink)">${fmS(net)}</div><div class="muted" style="font-size:10.5px">${fkrw(net)}</div></div></div>
     ${flowRows}</div>`;
-  // 건전성 추이 (스냅샷)
+  // 건전성 추이 (개선: Y축·값·영역·표)
   var snaps=(D.snapshots||[]).slice().sort(function(a,b){return (a.ym||'').localeCompare(b.ym||'');});
   var trend;
   if(snaps.length>=2){
-    var metrics=[{k:'achv',l:jt('목표달성','Target'),c:'#4f46e5',suf:'%'},{k:'payRate',l:jt('수금률','Collection'),c:'#16a34a',suf:'%'}];
-    var mx=Math.max.apply(null,[100].concat(snaps.map(function(s){return Math.max(s.achv||0,s.payRate||0);})));
-    var chart=metrics.map(function(mt){
-      var pts=snaps.map(function(s,i){return [i/(snaps.length-1)*100,100-(s[mt.k]||0)/mx*100];});
-      var poly=pts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ');
-      return '<polyline points="'+poly+'" fill="none" stroke="'+mt.c+'" stroke-width="2.5" vector-effect="non-scaling-stroke"/>'+pts.map(function(p){return '<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="1.6" fill="'+mt.c+'"/>';}).join('');
-    }).join('');
-    var legend=metrics.map(function(mt){return '<span style="font-size:11.5px;color:var(--muted)"><span style="display:inline-block;width:10px;height:3px;background:'+mt.c+';vertical-align:middle;margin-right:4px"></span>'+mt.l+'</span>';}).join(' &nbsp; ');
-    var arr=snaps.map(function(s){return '<span style="flex:1;text-align:center">'+(+s.ym.slice(5))+jt('월','')+'</span>';}).join('');
+    var W=snaps.length, xs=function(i){return (W===1?50:i/(W-1)*100);};
+    var yScale=function(v){return 100-Math.max(0,Math.min(100,v));};   // 0~100%
+    var mk=function(key,color,fill){
+      var pts=snaps.map(function(s,i){return [xs(i),yScale(s[key]||0)];});
+      var line=pts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ');
+      var area=fill?('<polygon points="0,100 '+line+' 100,100" fill="'+color+'" opacity="0.08"/>'):'';
+      var dots=pts.map(function(p,i){return '<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(i===pts.length-1?2.6:1.8)+'" fill="'+color+'"/>';}).join('');
+      return area+'<polyline points="'+line+'" fill="none" stroke="'+color+'" stroke-width="2" vector-effect="non-scaling-stroke"/>'+dots;
+    };
+    var grid=[0,25,50,75,100].map(function(g){var y=yScale(g);return '<line x1="0" y1="'+y+'" x2="100" y2="'+y+'" stroke="#eef1f5" stroke-width="0.5" vector-effect="non-scaling-stroke"/>';}).join('');
+    var yaxis=[100,50,0].map(function(g){return '<div style="flex:1;font-size:9px;color:#cbd5e1">'+g+'%</div>';}).join('');
+    var last=snaps[snaps.length-1];
+    var lastLbl='<div style="position:absolute;top:6px;right:8px;font-size:11px"><span style="color:#4f46e5;font-weight:700">'+jt('목표','Tgt')+' '+(last.achv||0).toFixed(0)+'%</span> &nbsp; <span style="color:#16a34a;font-weight:700">'+jt('수금','Col')+' '+(last.payRate||0).toFixed(0)+'%</span></div>';
+    var months='<div style="display:flex;margin-left:26px">'+snaps.map(function(s){return '<span style="flex:1;text-align:center;font-size:10.5px;color:var(--muted)">'+(+s.ym.slice(5))+jt('월','')+'</span>';}).join('')+'</div>';
+    // 월별 표
+    var rows=snaps.slice().reverse().map(function(s){return `<tr><td class="l">${s.ym}</td><td>${fmS(s.sale)}</td><td>${(s.achv||0).toFixed(0)}%</td><td>${(s.payRate||0).toFixed(0)}%</td><td>${fmS(s.out)}</td><td>${fmS(s.bal)}</td></tr>`;}).join('');
     trend=`<div class="card"><div class="sect"><span>📈 ${jt('건전성 추이','Health Trend')}</span><button class="btn btn-sm" onclick="saveSnapshot()"><i class="bi bi-camera"></i> ${jt('이번달 스냅샷','Snapshot')}</button></div>
-      <div>${legend}</div>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:150px;margin-top:8px">${chart}</svg>
-      <div style="display:flex">${arr}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">${jt('미수·자금은 스냅샷 시점값 · 매월 저장하면 추세가 쌓입니다','Saved monthly · AR/cash are point-in-time')}</div></div>`;
+      <div style="position:relative;display:flex;gap:6px">
+        <div style="display:flex;flex-direction:column;justify-content:space-between;height:150px;padding:2px 0">${yaxis}</div>
+        <div style="flex:1;position:relative">${lastLbl}<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:150px">${grid}${mk('achv','#4f46e5',true)}${mk('payRate','#16a34a',false)}</svg></div>
+      </div>${months}
+      <div style="margin-top:14px;overflow:auto"><table style="font-size:12px"><thead><tr><th class="l">${jt('월','Month')}</th><th>${jt('매출','Revenue')}</th><th>${jt('달성','Achv')}</th><th>${jt('수금률','Coll%')}</th><th>${jt('미수','AR')}</th><th>${jt('자금','Cash')}</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   } else {
     trend=`<div class="card"><div class="sect"><span>📈 ${jt('건전성 추이','Health Trend')}</span><button class="btn btn-primary btn-sm" onclick="saveSnapshot()"><i class="bi bi-camera"></i> ${jt('이번달 스냅샷 저장','Save Snapshot')}</button></div>
-      <div class="empty">${jt('매월 스냅샷을 저장하면 목표달성·수금률·미수·자금 추세가 그래프로 쌓입니다. (현재 '+snaps.length+'개)','Save monthly snapshots to build the trend. ('+snaps.length+' saved)')}</div></div>`;
+      <div class="empty">${jt('매월 스냅샷을 저장하면 목표달성·수금률·미수·자금 추세가 쌓입니다. (현재 '+snaps.length+'개)','Save monthly snapshots to build the trend. ('+snaps.length+' saved)')}</div></div>`;
   }
-  return head('🏢 '+jt('본사 관리','HQ Console'), jt('본사에서 미국법인을 원격 감독 · 건전성·자금·원화·추이','HQ oversight of WONTECH USA · health, funds, KRW, trend'),
+  return head('🏢 '+jt('본사 관리','HQ Console'), jt('본사에서 미국법인을 원격 감독 · 건전성·자금·원화·추이','HQ oversight of WONTECH USA'),
     `<span class="chip ${overall==='g'?'c-green':overall==='y'?'c-amber':'c-red'}" style="font-size:12px;padding:5px 10px">● ${ovLabel}</span><button class="btn btn-sm" onclick="saveSnapshot()"><i class="bi bi-camera"></i> ${jt('스냅샷','Snapshot')}</button>`)
-    +`<div class="grid hqsc" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px">${scHtml}</div>`
+    +`<div class="grid hqsc" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px">${scHtml}</div>`
+    +issueBanner
     +`<div class="grid dash2col" style="grid-template-columns:1fr 1fr;margin-bottom:14px">${krw}${hqFund}</div>`
     +trend+'</div>';
 }
