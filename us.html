@@ -622,7 +622,7 @@ function openClient(name){
         <div><div class="muted" style="font-size:11px">등급/상태</div><span class="chip ${GRADE_C[c.grade]||'c-gray'}">${c.grade||'-'}</span> <span class="chip c-gray">${c.status||'활성'}</span></div></div>
         <div style="margin-top:10px"><button class="btn btn-sm" onclick="closeDw();mClient('${c.id}')"><i class="bi bi-pencil"></i> 정보 수정</button></div>`
         :`<div class="muted" style="font-size:12.5px">고객사 마스터 미등록</div><div style="margin-top:8px"><button class="btn btn-sm btn-primary" onclick="closeDw();mClient()">+ 고객사 등록</button></div>`;
-      const dHtml=ds.length?ds.map(d=>`<div onclick="closeDw();mDeal('${d.id}')" style="display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="chip" style="background:${DEAL_ST[d.stage]}22;color:${DEAL_ST[d.stage]}">${d.stage}</span><span style="flex:1">${esc(d.product)||'-'}</span><b>${fm(d.amt)}</b><span class="muted">${d.prob||0}%</span></div>`).join(''):'<div class="empty" style="padding:10px">딜 없음</div>';
+      const dHtml=ds.length?ds.map(d=>`<div onclick="openDeal('${d.id}')" style="display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="chip" style="background:${DEAL_ST[d.stage]}22;color:${DEAL_ST[d.stage]}">${d.stage}</span><span style="flex:1">${esc(d.product)||'-'}</span><b>${fm(d.amt)}</b><span class="muted">${d.prob||0}%</span></div>`).join(''):'<div class="empty" style="padding:10px">딜 없음</div>';
       const aHtml=as.length?as.map(a=>`<div style="padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px"><span class="chip ${ACT_T[a.type]||'c-gray'}">${esc(a.type)}</span> <span class="muted">${a.date}</span> ${esc(a.content)||''}${a.next&&!a.doneNext?` <span class="chip ${a.nextDate&&a.nextDate<today()?'c-red':'c-amber'}">→ ${esc(a.next)}</span>`:''}</div>`).join(''):'<div class="empty" style="padding:10px">활동 없음</div>';
       return `<div class="dwcard"><div class="sect"><span>👤 고객 정보</span></div>${info}</div>
       <div class="dwcard"><div class="sect"><span>🎯 딜</span><button class="btn btn-sm" onclick="closeDw();mDeal()">+ 딜</button></div>${dHtml}</div>
@@ -745,11 +745,12 @@ function vPipe(){
       const daysBadge=`<span class="days" style="background:${staleDanger?'#dc2626':staleWarn?'#f59e0b':'#e5e7eb'};color:${staleDanger||staleWarn?'#fff':'#6b7280'}">${days}일째</span>`;
       const closingThis=d.expected&&d.expected.slice(0,7)===thisYm&&!isWon;
       const overdue=d.expected&&d.expected<today()&&!isWon;
-      return `<div class="kcard" draggable="true" data-id="${d.id}" onclick="mDeal('${d.id}')" style="border-left:3px solid ${c}${closingThis?';box-shadow:0 0 0 2px #f59e0b40':overdue?';box-shadow:0 0 0 2px #dc262640':''}">
+      return `<div class="kcard" draggable="true" data-id="${d.id}" onclick="openDeal('${d.id}')" style="border-left:3px solid ${c}${closingThis?';box-shadow:0 0 0 2px #f59e0b40':overdue?';box-shadow:0 0 0 2px #dc262640':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px"><div class="t">${esc(d.client)}</div>${daysBadge}</div>
         <div class="prod">${esc(d.product)||''}${d.qty?' ×'+d.qty:''}</div>
         <div class="amt">${fm(d.amt)}</div>
         <div class="ft"><span class="owner">${esc(d.owner)||''}</span><span class="prob" style="background:${probColor(d.prob)}">${d.prob||0}%</span></div>
+        ${(()=>{const tn=(D.tasks||[]).filter(t=>t.dealId===d.id&&!t.done).length;return tn?`<div style="font-size:10px;color:#4f46e5;margin-top:5px;background:#eef2ff;border-radius:5px;padding:3px 6px"><i class="bi bi-check2-square"></i> ${jt('할일','Tasks')} ${tn}</div>`:'';})()}
         ${d.next?`<div style="font-size:10px;color:#059669;margin-top:5px;background:#ecfdf5;border-radius:5px;padding:3px 6px"><i class="bi bi-arrow-right-circle-fill"></i> ${esc(d.next)}${d.nextDate?' · '+d.nextDate:''}${d.nextDate&&d.nextDate<today()?' ⚠':''}</div>`:''}
         ${d.expected?`<div class="due" style="${overdue?'color:#dc2626;font-weight:700':closingThis?'color:#d97706;font-weight:700':''}"><i class="bi bi-calendar3"></i> 예상 ${d.expected}${overdue?' ⚠️ 기한초과':closingThis?' · 이달마감':''}</div>`:''}
         ${(st==='협의중'||st==='견적발송')?`<div style="margin-top:6px"><button class="btn btn-sm" style="color:var(--ok);width:100%" onclick="event.stopPropagation();wonDeal('${d.id}')">✓ 성사 → 수주 생성</button></div>`:''}
@@ -973,7 +974,7 @@ function schItems(){
   (D.orders||[]).filter(o=>o.eta&&o.status!=='납품완료'&&o.status!=='취소').forEach(o=>out.push({date:o.eta,time:'',kind:'납기',title:o.client+' '+(o.product||'')+(L==='en'?' delivery':' 납기'),owner:'',done:false,ref:'order',id:o.id}));
   return out;
 }
-function schClick2(ref,id){if(ref==='task')mTask(id);else if(ref==='deal')mDeal(id);else if(ref==='act')setView('acts');else if(ref==='order')mOrder(id);}
+function schClick2(ref,id){if(ref==='task'){const t=(D.tasks||[]).find(x=>x.id===id);if(t&&t.dealId)return openDeal(t.dealId);return mTask(id);}if(ref==='deal')return openDeal(id);if(ref==='act')return setView('acts');if(ref==='order')return mOrder(id);}
 async function toggleTask(id){const t=(D.tasks||[]).find(x=>x.id===id);if(!t)return;t.done=!t.done;await saveAll(t.done?jt('완료','Done'):jt('해제','Reopened'));}
 function schCard(it){const k=SCH_KIND[it.kind];const overdue=it.date<today()&&!it.done;
   return `<div style="border-left:3px solid ${k.c};background:#f8fafc;border-radius:7px;padding:7px 9px;margin-bottom:6px;${it.done?'opacity:.55':''}">
@@ -1035,6 +1036,48 @@ function mTask(id){const tk=id?(D.tasks||[]).find(x=>x.id===id):{title:'',date:t
       const i=(D.tasks||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.tasks[i]=rec;else D.tasks.push(rec);return await saveAll();},
     id?async()=>{D.tasks=D.tasks.filter(x=>x.id!==id);await saveAll(jt('삭제됨','Deleted'));}:null);
 }
+
+// ── 딜 드로어 (파이프라인 + 일정/할일 통합) ──
+function openDeal(id){
+  const d=(D.deals||[]).find(x=>x.id===id);if(!d)return;
+  const tasks=(D.tasks||[]).filter(t=>t.dealId===id).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const acts=(D.acts||[]).filter(a=>a.client===d.client).sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,6);
+  const stageBar=Object.keys(DEAL_ST).map(st=>`<span onclick="dealStage('${id}','${st}')" style="cursor:pointer;padding:4px 10px;border-radius:7px;font-size:11px;font-weight:700;${d.stage===st?`background:${DEAL_ST[st]};color:#fff`:'background:#eef1f5;color:#94a3b8'}">${jt(st,EN[st]||st)}</span>`).join('');
+  const taskHtml=tasks.length?tasks.map(t=>{const late=t.date&&t.date<today()&&!t.done;
+    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px"><input type="checkbox" ${t.done?'checked':''} onclick="toggleTaskDrawer('${t.id}','${id}')" style="cursor:pointer"><span style="flex:1;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(t.title)}</span>${t.date?`<span class="muted" style="font-size:11px;${late?'color:var(--bad);font-weight:700':''}">${t.date}${late?' ⚠':''}</span>`:''}<button class="btn btn-sm" style="color:var(--bad);padding:2px 7px" onclick="delTaskDrawer('${t.id}','${id}')">×</button></div>`;}).join(''):`<div class="empty" style="padding:8px">${jt('등록된 할일이 없습니다','No tasks yet')}</div>`;
+  const actHtml=acts.length?acts.map(a=>`<div style="padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px"><span class="chip ${ACT_T[a.type]||'c-gray'}">${jt(a.type,EN[a.type]||a.type)}</span> <span class="muted">${a.date}</span> ${esc(a.content||'')}${a.next&&!a.doneNext?` <span class="chip ${a.nextDate&&a.nextDate<today()?'c-red':'c-amber'}">→ ${esc(a.next)}</span>`:''}</div>`).join(''):`<div class="empty" style="padding:8px">${jt('활동 기록 없음','No activities')}</div>`;
+  const canWin=(d.stage==='협의중'||d.stage==='견적발송');
+  openDw(jt('딜','Deal')+' · '+jt(d.stage,EN[d.stage]||d.stage), d.client,
+    `<div class="dwcard"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+      <div><div class="muted" style="font-size:11px">${jt('제품','Product')}</div><b style="color:var(--ink)">${esc(d.product)||'-'}${d.qty?' × '+d.qty:''}</b></div>
+      <div><div class="muted" style="font-size:11px">${jt('예상 금액','Amount')}</div><b style="color:var(--ink)">${fm(d.amt)}</b> <span class="muted" style="font-size:11px">${fkrw(d.amt)}</span></div>
+      <div><div class="muted" style="font-size:11px">${jt('성사 확률','Probability')}</div><b style="color:var(--ink)">${d.prob||0}%</b></div>
+      <div><div class="muted" style="font-size:11px">${jt('예상 마감','Expected close')}</div><b style="color:${d.expected&&d.expected<today()?'var(--bad)':'var(--ink)'}">${d.expected||'-'}</b></div>
+      <div><div class="muted" style="font-size:11px">${jt('담당','Owner')}</div><b style="color:var(--ink)">${esc(d.owner)||'-'}</b></div></div>
+      <div style="margin-top:13px"><div class="muted" style="font-size:11px;margin-bottom:6px">${jt('단계 · 클릭하여 이동','Stage · click to move')}</div><div style="display:flex;gap:5px;flex-wrap:wrap">${stageBar}</div></div>
+      ${d.memo?`<div class="muted" style="margin-top:11px;font-size:12px;background:#f8fafc;border-radius:7px;padding:8px 10px">${esc(d.memo)}</div>`:''}</div>
+    <div class="dwcard"><div class="sect"><span>✅ ${jt('할일 · 다음 액션','Tasks · Next actions')}</span></div>
+      ${d.next?`<div style="font-size:12px;color:#059669;background:#ecfdf5;border-radius:7px;padding:7px 9px;margin-bottom:9px">▸ ${esc(d.next)}${d.nextDate?' · '+d.nextDate+(d.nextDate<today()?' ⚠':''):''}</div>`:''}
+      ${taskHtml}
+      <div style="display:flex;gap:6px;margin-top:10px"><input id="ndt-title" placeholder="${jt('할 일 추가 후 Enter','Add task, then Enter')}" onkeydown="if(event.key==='Enter')addDealTask('${id}')" style="flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px"><input id="ndt-date" type="date" value="${today()}" style="width:135px;padding:8px 10px;border:1px solid var(--line);border-radius:8px"><button class="btn btn-sm btn-primary" onclick="addDealTask('${id}')">+</button></div></div>
+    <div class="dwcard"><div class="sect"><span>📞 ${jt('활동','Activities')}</span><button class="btn btn-sm" onclick="closeDw();mAct(null,'${esc(d.client).replace(/'/g,"&#39;")}')">+ ${jt('활동','Activity')}</button></div>${actHtml}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" onclick="closeDw();mDeal('${id}')"><i class="bi bi-pencil"></i> ${jt('상세 수정','Edit deal')}</button>
+      ${canWin?`<button class="btn btn-sm" style="color:var(--ok)" onclick="closeDw();wonDeal('${id}')">✓ ${jt('성사 → 수주','Win → Order')}</button>`:''}
+      <button class="btn btn-sm" style="color:var(--bad);margin-left:auto" onclick="delDealDrawer('${id}')">${jt('삭제','Delete')}</button></div>`);
+}
+async function dealStage(id,st){const d=(D.deals||[]).find(x=>x.id===id);if(!d||d.stage===st)return;
+  d.stage=st;d.stageAt=today();
+  if(st==='계약완료'&&!d.orderId&&confirm(jt('성사! 수주를 자동 생성할까요?','Won! Create an order automatically?')))_dealToOrder(d);
+  await saveAll(jt('단계 변경: ','Stage: ')+jt(st,EN[st]||st));openDeal(id);}
+async function addDealTask(id){const d=(D.deals||[]).find(x=>x.id===id);if(!d)return;
+  const ti=(document.getElementById('ndt-title').value||'').trim(), da=document.getElementById('ndt-date').value;
+  if(!ti){toast(jt('할 일을 입력하세요','Enter a task'));return;}
+  D.tasks.push({id:uid(),title:ti,date:da||today(),time:'',owner:d.owner||'',memo:'',done:false,dealId:id,client:d.client});
+  await saveAll(jt('할일 추가됨','Task added'));openDeal(id);}
+async function toggleTaskDrawer(tid,did){const t=(D.tasks||[]).find(x=>x.id===tid);if(t)t.done=!t.done;await saveAll();openDeal(did);}
+async function delTaskDrawer(tid,did){D.tasks=(D.tasks||[]).filter(x=>x.id!==tid);await saveAll(jt('삭제됨','Deleted'));openDeal(did);}
+async function delDealDrawer(id){if(!confirm(jt('이 딜을 삭제할까요?','Delete this deal?')))return;D.deals=(D.deals||[]).filter(x=>x.id!==id);await saveAll(jt('삭제됨','Deleted'));closeDw();}
 
 // ── 공용 모달 / 드로어 ──
 let _onSave=null,_onDel=null;
