@@ -64,6 +64,8 @@ button{font-family:inherit;cursor:pointer}input,select,textarea{font-family:inhe
 .mcard .mval{font-size:23px;font-weight:800;color:var(--ink);line-height:1}
 .mcard .msub{font-size:11px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .mtag{display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:5px;font-size:10.5px;font-weight:700}
+.pqchip{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+.pqchip:hover{background:#f1f5f9}.pqchip.on{background:#0f172a;color:#fff;border-color:#0f172a}
 .utr{opacity:.55}
 @media(max-width:1150px){.mcards{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:640px){.mcards{grid-template-columns:repeat(2,1fr)}}
@@ -169,7 +171,7 @@ tbody tr{cursor:pointer}tbody tr:hover td{background:#f8f9ff}
     <div style="padding:10px 12px 0"><button onclick="openSearch()" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px 11px;color:#94a3b8;font-size:12.5px;text-align:left;display:flex;align-items:center;gap:8px;cursor:pointer"><i class="bi bi-search"></i><span class="lbl">검색</span><span class="lbl" style="margin-left:auto;font-size:10px;opacity:.55">Ctrl K</span></button></div>
     <nav class="nav" id="nav">
       <div class="grp">경영 요약</div>
-      <a class="active" data-v="dash"><span class="ico">📈</span><span class="lbl">임원 대시보드</span></a>
+      <a class="active" data-v="dash"><span class="ico">📈</span><span class="lbl">대시보드</span></a>
       <a data-v="report"><span class="ico">📋</span><span class="lbl">월간 리포트</span></a>
       <a data-v="sched"><span class="ico">📅</span><span class="lbl">일정 · 할일</span></a>
       <div class="grp">CRM 영업</div>
@@ -275,9 +277,9 @@ let L=localStorage.getItem('us_lang')||'ko';
 function jt(ko,en){return L==='en'?en:ko;}
 const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const EN={
-'임원 대시보드':'Executive Dashboard','월간 리포트':'Monthly Report','영업 성과':'Sales Performance','일정 · 할일':'Schedule · Tasks','📅 일정 / 할일':'📅 Schedule & Tasks','📋 월간 경영 리포트':'📋 Monthly Business Report','🏆 영업 성과':'🏆 Sales Performance','경영 요약':'EXECUTIVE','CRM 영업':'CRM','영업 · 채권':'SALES & AR','운영':'OPERATIONS',
+'임원 대시보드':'Dashboard','월간 리포트':'Monthly Report','영업 성과':'Sales Performance','일정 · 할일':'Schedule · Tasks','📅 일정 / 할일':'📅 Schedule & Tasks','📋 월간 경영 리포트':'📋 Monthly Business Report','🏆 영업 성과':'🏆 Sales Performance','경영 요약':'EXECUTIVE','CRM 영업':'CRM','영업 · 채권':'SALES & AR','운영':'OPERATIONS',
 '딜 파이프라인':'Deal Pipeline','고객사 관리':'Accounts','활동 기록':'Activities','매출 · 수금':'Sales & Collections','미수금 현황':'Receivables (AR)','수주 관리':'Orders','거래처 분석':'Client Analysis','물류 · 재고':'Inventory','자금 관리':'Cash Management','사이트 이동':'Sites','비밀번호':'Password','로그아웃':'Logout','미국법인':'US Corp','전사 종합 경영현황':'Group Overview','한국 영업':'Korea Sales','해외 영업':'Global Sales','일본법인 관리':'Japan Corp','미국법인 관리':'USA Corp','태국법인 관리':'Thailand Corp','일일매출보고':'Daily Sales','상품기획 PM':'Product PM','데모 일정':'Demo Schedule','관리자 페이지':'Admin',
-'📈 임원 대시보드':'📈 Executive Dashboard','🎯 딜 파이프라인':'🎯 Deal Pipeline','👥 고객사 관리':'👥 Accounts','📞 활동 기록':'📞 Activities','🧾 매출 · 수금':'🧾 Sales & Collections','⏳ 미수금 현황':'⏳ Receivables (AR)','📝 수주 관리':'📝 Orders','🏢 거래처 분석':'🏢 Client Analysis','📦 물류 · 재고':'📦 Inventory','🏦 자금 관리':'🏦 Cash Management',
+'📊 대시보드':'📊 Dashboard','🎯 딜 파이프라인':'🎯 Deal Pipeline','👥 고객사 관리':'👥 Accounts','📞 활동 기록':'📞 Activities','🧾 매출 · 수금':'🧾 Sales & Collections','⏳ 미수금 현황':'⏳ Receivables (AR)','📝 수주 관리':'📝 Orders','🏢 거래처 분석':'🏢 Client Analysis','📦 물류 · 재고':'📦 Inventory','🏦 자금 관리':'🏦 Cash Management',
 '미국법인 경영 현황':'WONTECH USA Overview','환율':'FX','기준':'as of',
 '카드를 끌어 단계 이동 · 성사 시 수주 자동 생성 · 클릭 → 수정':'Drag to move stage · Won deals auto-create orders · Click to edit',
 '고객 마스터 · 등급·담당자·연락처 · 행 클릭 → 360° 상세':'Customer master: grade, contact · Click row for 360° view',
@@ -419,12 +421,48 @@ function render(){if(curView==='perf'&&!_canPerf)curView='dash';if(curView==='hq
 function head(t,d,acts){return `<div class="topbar"><div><h2>${t}</h2><div class="desc">${d}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${acts||''}</div></div><div class="wrap">`;}
 function isEmpty(){return !(D.sales||[]).length&&!(D.orders||[]).length&&!(D.funds||[]).length&&!(D.items||[]).length;}
 
-// ── 임원 대시보드 ──
+// ── 조회 기간 엔진 (프리셋 칩 + 직접설정) — 대시보드·리포트 공용 ──
+let PQ=null;
+function _mEnd(ym){var y=+ym.slice(0,4),m=+ym.slice(5,7);return ym+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');}
+function pqInit(){if(!PQ){var y=+curYr();PQ={from:y+'-01-01',to:y+'-12-31',label:jt(y+'년',''+y),preset:'thisYear'};}return PQ;}
+function pqPreset(t){var n=today(),y=+n.slice(0,4),m=+n.slice(5,7),ym=n.slice(0,7);
+  if(t==='thisMonth')PQ={from:ym+'-01',to:_mEnd(ym),label:jt(y+'년 '+m+'월',MONTHS_EN[m-1]+' '+y),preset:t};
+  else if(t==='lastMonth'){var p=prevYm(ym);PQ={from:p+'-01',to:_mEnd(p),label:jt((+p.slice(0,4))+'년 '+(+p.slice(5,7))+'월',MONTHS_EN[+p.slice(5,7)-1]+' '+p.slice(0,4)),preset:t};}
+  else if(t==='thisQ'){var q=Math.ceil(m/3),a=(q-1)*3+1,b=q*3;PQ={from:y+'-'+String(a).padStart(2,'0')+'-01',to:_mEnd(y+'-'+String(b).padStart(2,'0')),label:jt(y+'년 '+q+'분기',y+' Q'+q),preset:t};}
+  else if(t==='thisYear')PQ={from:y+'-01-01',to:y+'-12-31',label:jt(y+'년',''+y),preset:t};
+  else if(t==='lastYear')PQ={from:(y-1)+'-01-01',to:(y-1)+'-12-31',label:jt((y-1)+'년',''+(y-1)),preset:t};
+  else if(t==='last12'){var d=new Date(y,m-12,1);var fy=d.getFullYear(),fm=d.getMonth()+1;PQ={from:fy+'-'+String(fm).padStart(2,'0')+'-01',to:_mEnd(ym),label:jt('최근 12개월','Last 12mo'),preset:t};}
+  else if(t==='custom'){pqInit();PQ.preset='custom';}
+  render();}
+function pqCustom(){var f=document.getElementById('pq-from').value,t=document.getElementById('pq-to').value;
+  if(f)PQ.from=f+'-01';if(t)PQ.to=_mEnd(t);
+  if(PQ.to<PQ.from){var x=PQ.from;PQ.from=PQ.to.slice(0,7)+'-01';PQ.to=_mEnd(x.slice(0,7));}
+  PQ.preset='custom';PQ.label=PQ.from.slice(0,7)+' ~ '+PQ.to.slice(0,7);render();}
+function pqCtrl(){pqInit();
+  var chips=[['thisMonth','이번달','This mo.'],['lastMonth','지난달','Last mo.'],['thisQ','이번 분기','This Q'],['thisYear','올해','This yr'],['lastYear','작년','Last yr'],['last12','최근 12개월','Last 12mo'],['custom','직접설정','Custom']];
+  var h='<span style="display:inline-flex;gap:4px;flex-wrap:wrap;align-items:center">'+chips.map(function(c){return '<button class="pqchip'+(PQ.preset===c[0]?' on':'')+'" onclick="pqPreset(\''+c[0]+'\')">'+jt(c[1],c[2])+'</button>';}).join('')+'</span>';
+  if(PQ.preset==='custom')h+='<span style="display:inline-flex;gap:5px;align-items:center;margin-left:6px;padding-left:8px;border-left:1px solid var(--line)"><input type="month" id="pq-from" value="'+PQ.from.slice(0,7)+'" max="'+PQ.to.slice(0,7)+'" onchange="pqCustom()" class="sel" style="padding:5px 8px"><span class="muted">~</span><input type="month" id="pq-to" value="'+PQ.to.slice(0,7)+'" onchange="pqCustom()" class="sel" style="padding:5px 8px"></span>';
+  return h;}
+function pqSales(){pqInit();return (D.sales||[]).filter(function(s){return _inR(s.date,PQ.from,PQ.to);});}
+function pqPayIn(from,to){var p=0;(D.sales||[]).forEach(function(s){(s.collections||[]).forEach(function(c){if(_inR(c.date,from,to))p+=+c.amt||0;});});return p;}
+function pqTargetSum(from,to){var s=0,f=from.slice(0,7),t=to.slice(0,7);Object.keys(D.targets||{}).forEach(function(k){if(k>=f&&k<=t)s+=+D.targets[k]||0;});return s;}
+function pqPrev(){var f=new Date(PQ.from),t=new Date(PQ.to),days=Math.round((t-f)/86400000);var pt=new Date(f.getTime()-86400000),pf=new Date(pt.getTime()-days*86400000);return {from:pf.toISOString().slice(0,10),to:pt.toISOString().slice(0,10)};}
+
+// ── 대시보드 ──
 function vDash(){
+  pqInit();
   const yr=curYr(), mo=+curYm().slice(5,7);
-  const sm=salesMonthly(yr), pm=payMonthly(yr), tm=tgtMonthly(yr);
-  const mSale=sm[mo]||0, ySale=ytd(sm,mo), yPay=ytd(pm,mo), yTgt=ytd(tm,mo), fyTgt=ytd(tm,12);
+  const sm=salesMonthly(yr), pm=payMonthly(yr), tm=tgtMonthly(yr);   // 월별 차트용(당해 12개월)
+  // 기간(PQ) 집계
+  const pSales=pqSales();
+  const ySale=pSales.reduce((a,s)=>a+(+s.amt||0),0);
+  const yPay=pqPayIn(PQ.from,PQ.to);
+  const yTgt=pqTargetSum(PQ.from,PQ.to);
   const achv=pct(ySale,yTgt), payRate=pct(yPay,ySale);
+  const PP=pqPrev();
+  const ppSale=(D.sales||[]).filter(s=>_inR(s.date,PP.from,PP.to)).reduce((a,s)=>a+(+s.amt||0),0);
+  const momG=ppSale?((ySale/ppSale-1)*100):null;
+  // 시점값 (기간 무관)
   const out=totalOut(), bal=fundsBal();
   const backlog=(D.orders||[]).filter(o=>o.status!=='납품완료'&&o.status!=='취소');
   const backAmt=backlog.reduce((a,o)=>a+(+o.amt||0),0);
@@ -434,28 +472,27 @@ function vDash(){
   const wPipe=openDeals.reduce((a,d)=>a+(+d.amt||0)*(+d.prob||0)/100,0);
   const fu=(D.acts||[]).filter(a=>a.nextDate&&a.nextDate<today()&&!a.doneNext);
   const fuDeals=(D.deals||[]).filter(d=>DEAL_OPEN.includes(d.stage)&&d.next&&d.nextDate&&d.nextDate<today());
-  // 데이터 집계 (KPI·차트용)
-  const prevSale=sm[mo-1]||0;
-  const momG=prevSale?((mSale/prevSale-1)*100):null;
-  const byPrY={};(D.sales||[]).forEach(x=>{if(String(x.date||'').slice(0,4)!==yr||!x.product)return;byPrY[x.product]=(byPrY[x.product]||0)+(+x.amt||0);});
+  // 제품 Top5 (기간)
+  const byPrY={};pSales.forEach(x=>{if(x.product)byPrY[x.product]=(byPrY[x.product]||0)+(+x.amt||0);});
   const topPr=Object.entries(byPrY).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxPr=Math.max(1,...topPr.map(x=>x[1]));
   const itemsN=(D.items||[]).length;
-  // 히어로
+  const nMon=Math.max(1,pSales.length?(new Set(pSales.map(s=>ym(s.date))).size):1);
+  // 히어로 (기간 기준)
   const gcol=achv>=100?'#4ade80':achv>=70?'#60a5fa':'#fbbf24';
   const hero=`<div class="hero">
-    <div><div class="hl">${yr}년 누적 매출 (매출인식 기준)</div><div class="hv">${fm(ySale)}</div>
-      <div class="hs">${fkrw(ySale)} · 이번달 ${fm(mSale)} · 월평균 ${fm(mo?ySale/mo:0)}</div>
-      <div class="hs" style="margin-top:8px">목표 달성률 <b style="color:${gcol}">${yTgt?achv.toFixed(1)+'%':'목표 미설정'}</b>${yTgt?' <span style="color:#64748b">(목표 '+fm(yTgt)+')</span>':''}</div>
+    <div><div class="hl">${PQ.label} ${jt('매출 (매출인식)','Revenue')}</div><div class="hv">${fm(ySale)}</div>
+      <div class="hs">${fkrw(ySale)} · ${pSales.length}${jt('건','')}${momG!=null?` · <span style="color:${momG>=0?'#4ade80':'#fca5a5'}">${momG>=0?'▲':'▼'} ${Math.abs(momG).toFixed(0)}%</span> ${jt('전기비','vs prev')}`:''}</div>
+      <div class="hs" style="margin-top:8px">${jt('목표 달성률','Target')} <b style="color:${gcol}">${yTgt?achv.toFixed(1)+'%':jt('목표 미설정','no target')}</b>${yTgt?' <span style="color:#64748b">('+jt('목표','tgt')+' '+fm(yTgt)+')</span>':''}</div>
       <div class="gauge"><i style="width:${Math.min(100,achv)}%;background:${gcol}"></i></div></div>
-    <div class="divv"><div class="hl">수금 (입금 기준 · 참고)</div><div class="hv" style="font-size:24px">${fm(yPay)}</div>
-      <div class="hs">수금률 ${ySale?payRate.toFixed(0)+'%':'-'} · ${fkrw(yPay)}</div>
-      <div class="hl" style="margin-top:12px">미수채권</div><div style="font-size:20px;font-weight:800;color:${out?'#fca5a5':'#4ade80'}">${fm(out)}</div>
+    <div class="divv"><div class="hl">${jt('수금 (기간)','Collections')}</div><div class="hv" style="font-size:24px">${fm(yPay)}</div>
+      <div class="hs">${jt('수금률','rate')} ${ySale?payRate.toFixed(0)+'%':'-'} · ${fkrw(yPay)}</div>
+      <div class="hl" style="margin-top:12px">${jt('미수채권 (현재)','Receivables (now)')}</div><div style="font-size:20px;font-weight:800;color:${out?'#fca5a5':'#4ade80'}">${fm(out)}</div>
       <div class="hs">${fkrw(out)}</div></div>
-    <div class="divv"><div class="hl">자금 잔액</div><div class="hv" style="font-size:24px;color:${bal<0?'#fca5a5':'#fff'}">${fm(bal)}</div>
+    <div class="divv"><div class="hl">${jt('자금 잔액 (현재)','Cash (now)')}</div><div class="hv" style="font-size:24px;color:${bal<0?'#fca5a5':'#fff'}">${fm(bal)}</div>
       <div class="hs">${fkrw(bal)}</div>
-      <div class="hl" style="margin-top:12px">수주 잔고</div><div style="font-size:20px;font-weight:800">${fm(backAmt)}</div>
-      <div class="hs">${backlog.length}건 진행${lateOrd.length?' · <span style="color:#fca5a5">납기지연 '+lateOrd.length+'건</span>':''}</div></div>
+      <div class="hl" style="margin-top:12px">${jt('수주 잔고','Backlog')}</div><div style="font-size:20px;font-weight:800">${fm(backAmt)}</div>
+      <div class="hs">${backlog.length}${jt('건 진행',' open')}${lateOrd.length?' · <span style="color:#fca5a5">'+jt('납기지연 ','overdue ')+lateOrd.length+'</span>':''}</div></div>
   </div>`;
   // 월별 콤보(매출 vs 수금 + 목표선)
   const mx=Math.max(1,...Array.from({length:12},(_,i)=>Math.max(sm[i+1]||0,pm[i+1]||0,tm[i+1]||0)));
@@ -481,8 +518,9 @@ function vDash(){
   low.forEach(i=>alerts.push(`<div onclick="setView('inv')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">📦 <b>${trUser(i.name)}</b> 재고 ${itemQty(i.name)}${trUser(i.unit)} &lt; 안전 ${i.safety}</div>`));
   fu.forEach(a=>alerts.push(`<div onclick="setView('acts')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">📞 <b>${esc(a.client)}</b> 후속조치 지연: ${trUser(a.next)} (${a.nextDate})</div>`));
   fuDeals.forEach(d=>alerts.push(`<div onclick="setView('pipe')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">🎯 <b>${esc(d.client)}</b> 딜 액션 지연: ${trUser(d.next)} (${d.nextDate})</div>`));
-  return head('📈 임원 대시보드',`${'미국법인'} 경영 현황 · 환율 ${SYM}1 = ₩${(D.rate||0).toLocaleString()} · 기준 ${today()}`,
-    `<button class="btn btn-sm" onclick="mTargets()"><i class="bi bi-bullseye"></i> 목표 설정</button><button class="btn btn-sm" onclick="setRate()"><i class="bi bi-currency-exchange"></i> 환율</button>${isEmpty()?'<button class="btn btn-primary" onclick="seedSample(true)">샘플 데이터 넣기</button>':''}`)
+  return head('📊 '+jt('대시보드','Dashboard'),jt('미국법인 경영 현황','WONTECH USA overview')+` · ${SYM}1=₩${(D.rate||0).toLocaleString()} · ${jt('기준','as of')} ${today()}`,
+    `<button class="btn btn-sm" onclick="mTargets()"><i class="bi bi-bullseye"></i> ${jt('목표','Targets')}</button><button class="btn btn-sm" onclick="setRate()"><i class="bi bi-currency-exchange"></i> ${jt('환율','FX')}</button>${isEmpty()?'<button class="btn btn-primary" onclick="seedSample(true)">'+jt('샘플 데이터 넣기','Load sample')+'</button>':''}`)
+    +`<div style="margin-bottom:14px">${pqCtrl()}</div>`
     +hero
     +`<div class="mcards">
       <div class="mcard" onclick="setView('sales')">
