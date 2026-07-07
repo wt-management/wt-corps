@@ -252,7 +252,7 @@ const KEY='corp_us_erp', SYM='$', CUR='USD';
 const ORD_ST={'수주':'c-blue','생산중':'c-amber','선적중':'c-cyan','납품완료':'c-green','취소':'c-gray'};
 const DEAL_ST={'리드':'#94a3b8','상담중':'#2563eb','견적발송':'#d97706','협의중':'#7c3aed','계약완료':'#15803d','실패':'#cbd5e1'};
 const DEAL_OPEN=['리드','상담중','견적발송','협의중'];
-const ACT_T={'콜':'c-blue','미팅':'c-violet','이메일':'c-gray','방문':'c-green'};
+const ACT_T={'콜':'c-blue','미팅':'c-violet','이메일':'c-gray','방문':'c-green','AS':'c-amber'};
 const GRADE_C={'A':'c-red','B':'c-amber','C':'c-gray'};
 let ME='',curView='dash',D=null,LOCAL=false;
 let _role='',_access='',_canPerf=false,_canHQ=false;
@@ -1315,10 +1315,11 @@ function mClient(id){const c=id?(D.clients||[]).find(x=>x.id===id):{name:'',cont
 // ── CRM: 활동 기록 ──
 function _segIc(t){var p={timeline:'<line x1="3.5" y1="4" x2="13" y2="4"/><line x1="3.5" y1="8" x2="13" y2="8"/><line x1="3.5" y1="12" x2="13" y2="12"/>',calendar:'<rect x="2.5" y="3.2" width="11" height="10.3" rx="1.6"/><line x1="2.5" y1="6.2" x2="13.5" y2="6.2"/><line x1="5.5" y1="1.8" x2="5.5" y2="4"/><line x1="10.5" y1="1.8" x2="10.5" y2="4"/>',list:'<rect x="2.5" y="3.2" width="11" height="9.8" rx="1.6"/><line x1="2.5" y1="6.4" x2="13.5" y2="6.4"/><line x1="2.5" y1="9.6" x2="13.5" y2="9.6"/>',today:'<circle cx="8" cy="8" r="5.3"/><line x1="8" y1="8" x2="8" y2="5.2"/><line x1="8" y1="8" x2="10.2" y2="8"/>',week:'<rect x="2.5" y="3.2" width="11" height="10.3" rx="1.6"/><line x1="5.5" y1="1.8" x2="5.5" y2="4"/><line x1="10.5" y1="1.8" x2="10.5" y2="4"/><line x1="5" y1="9" x2="11" y2="9"/>'}[t]||'';return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="vertical-align:-2px">'+p+'</svg>';}
 let fActClient='', fActType='', actMode='timeline', actRef=new Date();
-const ACT_ICON={'콜':'📞','미팅':'🤝','이메일':'✉️','방문':'📍'};
-const ACT_COL={'콜':'#2563eb','미팅':'#7c3aed','이메일':'#64748b','방문':'#16a34a'};
+const ACT_ICON={'콜':'📞','미팅':'🤝','이메일':'✉️','방문':'📍','AS':'🛠'};
+const ACT_COL={'콜':'#2563eb','미팅':'#7c3aed','이메일':'#64748b','방문':'#16a34a','AS':'#f59e0b'};
 function _actList(){var L=(D.acts||[]).slice();if(fActClient)L=L.filter(a=>a.client===fActClient);if(fActType)L=L.filter(a=>a.type===fActType);return L;}
 function setActMode(m){actMode=m;render();}
+function _actSerToggle(){var t=document.getElementById('f-type'),r=document.getElementById('act-serrow');if(t&&r)r.style.display=(t.value==='AS')?'block':'none';}
 function actNav(d){actRef.setMonth(actRef.getMonth()+d);actRef=new Date(actRef);render();}
 function vActs(){
   var L=_actList();
@@ -1332,7 +1333,7 @@ function vActs(){
     +'<select class="sel" onchange="fActClient=this.value;render()"><option value="">'+jt('고객사 전체','All accounts')+'</option>'+clients.map(c=>'<option '+(fActClient===c?'selected':'')+'>'+esc(c)+'</option>').join('')+'</select>';
   var nav=actMode==='calendar'?'<button class="btn btn-sm" onclick="actNav(-1)"><i class="bi bi-chevron-left"></i></button><button class="btn btn-sm" onclick="actRef=new Date();render()">'+jt('오늘','Today')+'</button><button class="btn btn-sm" onclick="actNav(1)"><i class="bi bi-chevron-right"></i></button>':'';
   var body=actMode==='timeline'?actTimeline(L):actMode==='calendar'?actCalendar(L):actListView(L);
-  return head('📞 '+jt('활동 기록','Activities'), jt('콜·미팅·방문 이력 + 후속조치','Calls, meetings, visits + follow-ups')+(fuAll.length?' · <span style="color:var(--bad);font-weight:600">'+jt('후속 지연 ','overdue ')+fuAll.length+'</span>':''),
+  return head('📞 '+jt('활동 기록','Activities'), jt('콜·미팅·방문·AS 이력 + 후속조치','Calls, meetings, visits, service + follow-ups')+(fuAll.length?' · <span style="color:var(--bad);font-weight:600">'+jt('후속 지연 ','overdue ')+fuAll.length+'</span>':''),
     seg+filters+nav+'<button class="btn btn-primary" onclick="mAct()">+ '+jt('활동','Activity')+'</button>')
     +`<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" class="actkpi">
       <div class="statcard" style="border-top:3px solid #4f46e5"><div class="sv">${(D.acts||[]).length}</div><div class="sl">${jt('전체 활동','All activities')}</div></div>
@@ -1341,17 +1342,16 @@ function vActs(){
       <div class="statcard" style="border-top:3px solid #dc2626"><div class="sv" style="color:${fuAll.length?'var(--bad)':'var(--ink)'}">${fuAll.length}</div><div class="sl">${jt('지연 후속','Overdue')}</div></div>
     </div>${body}</div>`;
 }
-function _actCard(a){
+function _actRow(a){
   var late=a.nextDate&&a.nextDate<today()&&!a.doneNext;
   var col=ACT_COL[a.type]||'#64748b';
-  var init=(a.client||'?').trim().slice(0,1).toUpperCase();
-  return `<div class="acard" onclick="mAct('${a.id}')">
-    <div class="aic" style="background:${col}18;color:${col}">${ACT_ICON[a.type]||'•'}</div>
-    <div style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><b style="color:var(--ink);font-size:13.5px">${esc(a.client)}</b><span class="chip" style="background:${col}18;color:${col};font-size:10.5px">${jt(a.type,EN[a.type]||a.type)}</span><span class="muted" style="font-size:11px;margin-left:auto">${a.date}</span></div>
-      ${a.content?`<div style="font-size:12.5px;color:var(--body);margin-top:4px;line-height:1.45">${trUser(a.content)}</div>`:''}
-      ${a.next?`<div style="margin-top:7px;display:flex;align-items:center;gap:7px;flex-wrap:wrap"><span style="font-size:11.5px;color:${late?'var(--bad)':a.doneNext?'var(--ok)':'var(--warn)'};background:${late?'#fee2e2':a.doneNext?'#dcfce7':'#fef3c7'};border-radius:6px;padding:3px 8px;font-weight:600"><i class="bi bi-arrow-right-short"></i>${trUser(a.next)} · ${a.doneNext?jt('완료','done'):(late?jt('지연 ','overdue ')+a.nextDate:a.nextDate)}</span>${a.next&&!a.doneNext?`<button class="btn btn-sm" style="padding:2px 9px;font-size:11px" onclick="event.stopPropagation();doneAct('${a.id}')">✓ ${jt('완료','done')}</button>`:''}</div>`:''}
-    </div></div>`;
+  var fu=a.next?`<span style="flex-shrink:0;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:${late?'var(--bad)':a.doneNext?'var(--ok)':'var(--warn)'};background:${late?'#fee2e2':a.doneNext?'#dcfce7':'#fef3c7'};border-radius:6px;padding:2px 8px;font-weight:600" title="${esc(a.next)}">→ ${trUser(a.next)} · ${a.doneNext?jt('완료','done'):(late?jt('지연','late'):a.nextDate)}</span>${!a.doneNext?`<button class="btn btn-sm" style="padding:1px 8px;font-size:11px;flex-shrink:0" onclick="event.stopPropagation();doneAct('${a.id}')" title="${jt('후속 완료','mark done')}">✓</button>`:''}`:'';
+  return `<div onclick="mAct('${a.id}')" style="display:flex;gap:9px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);border-left:3px solid ${col};cursor:pointer;transition:background .1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+    <span class="chip" style="background:${col}18;color:${col};font-size:10.5px;flex-shrink:0">${ACT_ICON[a.type]||''} ${jt(a.type,EN[a.type]||a.type)}</span>
+    <b style="color:var(--ink);font-size:13px;flex-shrink:0;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.client)}</b>
+    ${a.serial?`<span class="muted" style="font-size:10.5px;flex-shrink:0" title="${jt('연결 장비','linked unit')}">🔖 ${esc(a.serial)}</span>`:''}
+    <span style="flex:1;min-width:40px;font-size:12.5px;color:var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${trUser(a.content)||'<span style="color:var(--muted)">-</span>'}</span>
+    ${fu}</div>`;
 }
 function actTimeline(L){
   if(!L.length)return '<div class="card"><div class="empty">'+jt('활동 기록이 없습니다','No activities yet')+'</div></div>';
@@ -1359,12 +1359,12 @@ function actTimeline(L){
   var groups={};L.forEach(a=>{(groups[a.date||'?']=groups[a.date||'?']||[]).push(a);});
   var days=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
   var dn=['일','월','화','수','목','금','토'],dnE=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  return '<div class="tl">'+days.map(function(d){
+  return '<div class="card" style="padding:0;overflow:hidden">'+days.map(function(d){
     var dt=new Date(d),wd=isNaN(dt)?'':jt(dn[dt.getDay()],dnE[dt.getDay()]);
     var isToday=d===today();
-    return `<div class="tlrow"><div class="tldate"><div style="font-size:13px;font-weight:800;color:${isToday?'var(--brand)':'var(--ink)'}">${d.slice(5)}</div><div style="font-size:10.5px;color:var(--muted)">${wd}${isToday?' ·'+jt('오늘','today'):''}</div></div>
-      <div class="tlline"></div>
-      <div style="flex:1;padding-bottom:16px">${groups[d].map(_actCard).join('')}</div></div>`;}).join('')+'</div>';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:#f8fafc;border-bottom:1px solid var(--line);border-top:1px solid var(--line)">
+        <b style="font-size:12.5px;color:${isToday?'var(--brand)':'var(--ink)'}">${d.slice(5)}</b><span class="muted" style="font-size:11px">${wd}</span>${isToday?'<span class="chip c-blue" style="font-size:9.5px">'+jt('오늘','today')+'</span>':''}<span class="muted" style="margin-left:auto;font-size:11px">${groups[d].length}${jt('건','')}</span></div>`
+      +groups[d].map(_actRow).join('');}).join('')+'</div>';
 }
 function actListView(L){
   L.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -1385,15 +1385,20 @@ function actCalendar(L){
   return `<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px">${jt(y+'년 '+(m+1)+'월',MONTHS_EN[m]+' '+y)}</div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;box-shadow:var(--sh)">${dn.map((x,i)=>`<div style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:var(--muted);background:#fafbfc;border-bottom:1px solid var(--line)">${jt(x,dnE[i])}</div>`).join('')}${cells}</div>`;
 }
-function mAct(id,preClient){const a=id?(D.acts||[]).find(x=>x.id===id):{date:today(),type:'콜',client:preClient||'',content:'',next:'',nextDate:''};
+function mAct(id,preClient){const a=id?(D.acts||[]).find(x=>x.id===id):{date:today(),type:'콜',client:preClient||'',content:'',next:'',nextDate:'',serial:''};
+  var serOpts='<option value="">'+jt('없음','None')+'</option>'+(D.equipment||[]).slice().sort((x,y)=>(x.serial||'').localeCompare(y.serial||'')).map(e=>`<option ${a.serial===e.serial?'selected':''}>${esc(e.serial)}</option>`).join('');
   openM(id?'활동 수정':'활동 등록',dlist()+
-    `<div class="fr"><div class="fld"><label>날짜</label><input id="f-date" type="date" value="${a.date||today()}"></div><div class="fld"><label>유형</label><select id="f-type">${Object.keys(ACT_T).map(t=>`<option ${a.type===t?'selected':''}>${t}</option>`).join('')}</select></div></div>
+    `<div class="fr"><div class="fld"><label>날짜</label><input id="f-date" type="date" value="${a.date||today()}"></div><div class="fld"><label>유형</label><select id="f-type" onchange="_actSerToggle()">${Object.keys(ACT_T).map(t=>`<option value="${t}" ${a.type===t?'selected':''}>${ACT_ICON[t]||''} ${t}</option>`).join('')}</select></div></div>
     <div class="fld"><label>고객사</label><input id="f-client" list="dl-clients" value="${esc(a.client)}"></div>
-    <div class="fld"><label>내용</label><textarea id="f-content">${trUser(a.content||'')}</textarea></div>
-    <div class="fr"><div class="fld"><label>후속 조치</label><input id="f-next" value="${esc(a.next||'')}" placeholder="예: 견적 발송"></div><div class="fld"><label>후속 기한</label><input id="f-nextd" type="date" value="${a.nextDate||''}"></div></div>`,
-    async()=>{const g=x=>document.getElementById(x).value;const rec={id:id||uid(),date:g('f-date'),type:g('f-type'),client:g('f-client').trim(),content:g('f-content').trim(),next:g('f-next').trim(),nextDate:g('f-nextd'),doneNext:(id&&a.doneNext)||false};
+    <div class="fld"><label>내용</label><textarea id="f-content" placeholder="${jt('예: Lavieen 핸드피스 교체 / 증상·조치 내역','e.g. symptom & action')}">${trUser(a.content||'')}</textarea></div>
+    <div class="fld" id="act-serrow" style="display:${a.type==='AS'?'block':'none'}"><label>${jt('연결 장비 (AS 대상 시리얼)','Linked unit (serial for AS)')}</label><select id="f-serial">${serOpts}</select><div class="muted" style="font-size:10.5px;margin-top:3px">${jt('선택 시 해당 장비 이력에 AS 기록이 자동 추가됩니다','Selecting logs an AS event on that unit history')}</div></div>
+    <div class="fr"><div class="fld"><label>후속 조치</label><input id="f-next" value="${esc(a.next||'')}" placeholder="${jt('예: 부품 재입고 후 방문','e.g. revisit after parts')}"></div><div class="fld"><label>후속 기한</label><input id="f-nextd" type="date" value="${a.nextDate||''}"></div></div>`,
+    async()=>{const g=x=>{var e=document.getElementById(x);return e?e.value:'';};const rec={id:id||uid(),date:g('f-date'),type:g('f-type'),client:g('f-client').trim(),content:g('f-content').trim(),serial:(g('f-serial')||'').trim(),next:g('f-next').trim(),nextDate:g('f-nextd'),doneNext:(id&&a.doneNext)||false};
       if(!rec.client){toast('고객사를 입력하세요');return false;}
-      const i=(D.acts||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.acts[i]=rec;else D.acts.push(rec);return await saveAll();},
+      const i=(D.acts||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.acts[i]=rec;else D.acts.push(rec);
+      if(rec.type==='AS'&&rec.serial){var eq=(D.equipment||[]).find(x=>x.serial===rec.serial);
+        if(eq){eq.status='AS';if(rec.client)eq.client=rec.client;(eq.events=eq.events||[]).push({date:rec.date,type:'AS',detail:rec.content||rec.next||''});}}
+      return await saveAll();},
     id?async()=>{D.acts=D.acts.filter(x=>x.id!==id);await saveAll('삭제됨');}:null);
 }
 async function doneAct(id){const a=(D.acts||[]).find(x=>x.id===id);if(!a)return;a.doneNext=true;await saveAll('후속조치 완료');}
