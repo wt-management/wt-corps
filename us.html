@@ -336,7 +336,9 @@ const EN={
 '저장':'Save','삭제':'Delete','닫기':'Close','등록':'Add','저장됨':'Saved','삭제됨':'Deleted','수금 등록':'Collection added','수금 삭제':'Collection removed','환율 저장됨':'FX saved','목표 저장됨':'Targets saved','계좌 저장됨':'Accounts saved','샘플 데이터 저장됨':'Sample data saved','단계 이동':'Stage moved','성사 → 수주 생성됨':'Won → order created','납품완료 + 매출 생성됨':'Delivered + sale created','후속조치 완료':'Follow-up done','수금 처리':'Collected','딜 액션 지연':'deal action overdue',
 '👤 고객 정보':'👤 Contact Info','정보 수정':'Edit Info','고객사 마스터 미등록':'Not in account master','🎯 딜':'🎯 Deals','📞 최근 활동':'📞 Recent Activities','활동 없음':'No activities','🧾 매출 이력':'🧾 Sales History','📝 수주 이력':'📝 Order History','매출 없음':'No sales','수주 없음':'No orders',
 '월별 매출 목표':'Monthly Revenue Targets','💡 자동 인사이트':'💡 Auto Insights','📦 제품 Top5 (연간 매출)':'📦 Top 5 Products (YTD)','🏢 거래처별 미수 요약':'🏢 AR by Client','이달 납품 예정':'Due This Month','최근 6개월':'Last 6 mo','등록 품목':'Items','안전재고 미달':'Low Stock','이번달 입고':'IN this mo.','이번달 출고':'OUT this mo.','📊 월별 입출금':'📊 Monthly Cash In/Out','이번달 활동':'Activities (this mo.)','이번주 예정 후속':'Follow-ups This Week','지연 후속':'Overdue Follow-ups','매출 데이터 없음':'No sales data','임원 대시보드 달성률·목표선에 반영됩니다.':'Reflected in dashboard achievement & target line.',
-'년':'','월':'','건':'','명':'','개':'','비어있음':'Empty','딜':'deals'
+'년':'','월':'','건':'','명':'','개':'','비어있음':'Empty','딜':'deals',
+'대시보드':'Dashboard','장비 이력':'Equipment','🔧 장비 이력':'🔧 Equipment Registry','안전재고':'Safety Stock','진행 딜':'Open Deals','한국어':'Korean','기초잔액':'Opening balance','새 계좌 이름':'New account name','🔍 고객사·제품·담당':'🔍 Account / Product / Owner','거래처를 입력하세요':'Enter a client','금액을 입력하세요':'Enter an amount','품목명을 입력하세요':'Enter item name','고객사를 입력하세요':'Enter an account','고객사명을 입력하세요':'Enter account name','시리얼을 입력하세요':'Enter serial','발송 수량을 입력하세요':'Enter sent qty','입고수량을 입력하세요':'Enter received qty','품목을 선택하세요':'Select an item','수량을 입력하세요':'Enter quantity',
+'장비':'Unit','시리얼':'Serial','현재 위치':'Location','입고일':'Received','출고일':'Shipped','창고':'Warehouse','고객사 보유':'At clients','재고 (누계)':'In stock','운송중 (미착)':'In transit','본사 발송 (누계)':'HQ sent total','법인 입고완료':'Received','수량 불일치':'Qty mismatch','본사 선적 · 입고 대사':'HQ Shipments · Receiving','상세 주소':'Full address','주소':'Address','연결 장비':'Linked unit','장비 보유현황':'Equipment on site','장비 등록':'New unit','장비 수정':'Edit unit','계좌 관리':'Accounts','계좌 이름':'Account name','계좌 추가':'Add account','계좌를 1개 이상 남겨주세요':'Keep at least one account','재고':'Stock','전체':'All'
 };
 const EN_KEYS=Object.keys(EN).filter(k=>k.length>1).sort((a,b)=>b.length-a.length);
 function trStr(t){
@@ -355,6 +357,7 @@ function applyLang(){
     const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
     const nodes=[];while(n=w.nextNode())nodes.push(n);
     nodes.forEach(nd=>{
+      if(nd.parentElement&&nd.parentElement.closest('.usr'))return; // 사용자 입력은 trUser가 전담
       if(!on){ if(nd._ko!=null){nd.nodeValue=nd._ko;nd._ko=null;} return; }
       const raw=nd.nodeValue, t=raw.trim(); if(!t)return;
       const ex=trStr(t);
@@ -385,8 +388,8 @@ function trUser(t){
   var need = (typeof L!=='undefined'&&L==='ko') ? (/[A-Za-z]/.test(t)&&!/[\uac00-\ud7a3]/.test(t)) : (typeof L!=='undefined'&&L==='en' ? /[\uac00-\ud7a3]/.test(t) : false);
   if(!need)return esc(t);
   var key=L+'|'+t;
-  if(_trCache[key]!=null)return '<span title="'+esc(t)+'">'+esc(_trCache[key])+'</span>';
-  return '<span class="utr" data-k="'+esc(key)+'" data-s="'+esc(t)+'" title="'+esc(t)+'">'+esc(t)+'</span>';
+  if(_trCache[key]!=null)return '<span class="usr" title="'+esc(t)+'">'+esc(_trCache[key])+'</span>';
+  return '<span class="usr utr" data-k="'+esc(key)+'" data-s="'+esc(t)+'" title="'+esc(t)+'">'+esc(t)+'</span>';
 }
 var _trBusy=false;
 async function applyUserTr(){
@@ -1100,7 +1103,7 @@ function assetEvent(id,st){
 function mAsset(id){
   var e=id?(D.equipment||[]).find(function(x){return x.id===id;}):{serial:'',item:'',status:'재고',client:'',note:''};if(id&&!e)return;
   var itemOpts=(D.items||[]).map(function(i){return '<option '+(e.item===i.name?'selected':'')+'>'+esc(i.name)+'</option>';}).join('');
-  var stOpts=['재고','출고','설치','AS','반품'].map(function(s){return '<option '+(e.status===s?'selected':'')+'>'+s+'</option>';}).join('');
+  var stOpts=['재고','출고','설치','AS','반품'].map(function(s){return '<option value="'+s+'" '+(e.status===s?'selected':'')+'>'+jt(s,ASSET_ST_EN[s]||s)+'</option>';}).join('');
   var cliOpts='<option value="">-</option>'+(D.clients||[]).map(function(c){return '<option '+(e.client===c.name?'selected':'')+'>'+esc(c.name)+'</option>';}).join('');
   openM(id?jt('장비 수정','Edit unit'):jt('장비 등록','New unit'),
     '<div class="fr"><div class="fld"><label>'+jt('시리얼','Serial')+'</label><input id="f-serial" value="'+esc(e.serial||'')+'"></div><div class="fld"><label>'+jt('품목','Item')+'</label><select id="f-item"><option value="">'+jt('선택','—')+'</option>'+itemOpts+'</select></div></div>'
@@ -1114,6 +1117,7 @@ function mAsset(id){
       var i=(D.equipment||[]).findIndex(function(x){return x.id===rec.id;});if(i>=0)D.equipment[i]=rec;else D.equipment.push(rec);return await saveAll();},
     id?async function(){D.equipment=D.equipment.filter(function(x){return x.id!==id;});await saveAll(jt('삭제됨','Deleted'));}:null);
 }
+let fFundYm='',fFundAcc='';
 function vFunds(){
   const yms=monthsOf(D.funds||[]);
   let L=(D.funds||[]).slice();
@@ -1125,7 +1129,7 @@ function vFunds(){
   const accCards=(D.accounts||[]).map(a=>{const b=fundsBalAcc(a.name);
     return `<div class="statcard" style="cursor:pointer;border-top:3px solid #4f46e5;${fFundAcc===a.name?'border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)':''}" onclick="fFundAcc=fFundAcc==='${esc(a.name).replace(/'/g,"&#39;")}'?'':'${esc(a.name).replace(/'/g,"&#39;")}';render()">
       <div class="sv" style="color:${b<0?'var(--bad)':'var(--ink)'}">${fm(b)}</div><div class="sl">${esc(a.name)}</div><div class="s" style="font-size:11px;color:var(--muted);margin-top:4px">기초 ${fm(a.opening)} · ${fkrw(b)}</div></div>`;}).join('');
-  const rows=L.length?L.map(f=>`<tr onclick="mFund('${f.id}')"><td class="l">${f.date}</td><td class="l">${f.kind==='입금'?'<span class="chip c-green">입금</span>':'<span class="chip c-red">출금</span>'}</td><td class="l">${esc(f.account||'주거래계좌')}</td><td class="l">${esc(f.category||'-')}</td><td><b style="color:${f.kind==='입금'?'var(--ok)':'var(--bad)'}">${f.kind==='입금'?'+':'-'}${fm(f.amt)}</b></td><td class="l muted">${esc(f.memo||'')}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">자금 내역 없음</td></tr>';
+  const rows=L.length?L.map(f=>`<tr onclick="mFund('${f.id}')"><td class="l">${f.date}</td><td class="l">${f.kind==='입금'?'<span class="chip c-green">입금</span>':'<span class="chip c-red">출금</span>'}</td><td class="l">${esc(f.account||'주거래계좌')}</td><td class="l">${esc(f.category||'-')}</td><td><b style="color:${f.kind==='입금'?'var(--ok)':'var(--bad)'}">${f.kind==='입금'?'+':'-'}${fm(f.amt)}</b></td><td class="l muted">${trUser(f.memo||'')}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">자금 내역 없음</td></tr>';
   return head('🏦 자금 관리','계좌별 잔액 = 기초 + 입금 − 출금 · 계좌 카드 클릭 = 필터',
     `<select class="sel" onchange="fFundYm=this.value;render()"><option value="">전체 기간</option>${yms.map(m=>`<option ${fFundYm===m?'selected':''}>${m}</option>`).join('')}</select>`+
     `<button class="btn btn-sm" onclick="mAccounts()"><i class="bi bi-bank"></i> 계좌 관리</button>`+
@@ -1153,15 +1157,16 @@ function mFund(id){const f=id?(D.funds||[]).find(x=>x.id===id):{date:today(),kin
       const i=(D.funds||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.funds[i]=rec;else D.funds.push(rec);return await saveAll();},
     id?async()=>{D.funds=D.funds.filter(x=>x.id!==id);await saveAll('삭제됨');}:null);
 }
+function _accRow(nm,op){return '<div class="accrow" style="display:flex;gap:8px;margin-bottom:7px;align-items:center"><input class="acc-name" value="'+esc(nm||'')+'" placeholder="'+jt('계좌 이름','Account name')+'" style="flex:1;padding:7px 9px;border:1px solid var(--line);border-radius:8px"><input class="acc-open" type="number" value="'+(op||0)+'" placeholder="'+jt('기초잔액','Opening balance')+'" style="width:140px;padding:7px 9px;border:1px solid var(--line);border-radius:8px"><button type="button" class="btn btn-sm" style="color:var(--bad);flex-shrink:0" title="'+jt('삭제','Delete')+'" onclick="this.closest(\'.accrow\').remove()"><i class="bi bi-trash"></i></button></div>';}
 function mAccounts(){
-  const rows=(D.accounts||[]).map((a,i)=>`<div style="display:flex;gap:8px;margin-bottom:7px"><input id="ac-n-${i}" value="${esc(a.name)}" style="flex:1;padding:7px 9px;border:1px solid var(--line);border-radius:8px"><input id="ac-o-${i}" type="number" value="${a.opening||0}" placeholder="기초잔액" style="width:140px;padding:7px 9px;border:1px solid var(--line);border-radius:8px"></div>`).join('');
-  openM('계좌 관리 (이름 · 기초잔액)',rows+'<div class="muted" style="font-size:11.5px">계좌 추가: 아래 저장 후 다시 열면 빈 줄 1개가 생깁니다.</div>'
-    +`<div style="display:flex;gap:8px;margin-top:7px"><input id="ac-n-new" placeholder="새 계좌 이름" style="flex:1;padding:7px 9px;border:1px solid var(--line);border-radius:8px"><input id="ac-o-new" type="number" placeholder="기초잔액" style="width:140px;padding:7px 9px;border:1px solid var(--line);border-radius:8px"></div>`,
-    async()=>{const n=D.accounts.length;const next=[];
-      for(let i=0;i<n;i++){const nm=document.getElementById('ac-n-'+i).value.trim();if(!nm)continue;next.push({name:nm,opening:Number(document.getElementById('ac-o-'+i).value)||0});}
-      const nn=document.getElementById('ac-n-new').value.trim();if(nn)next.push({name:nn,opening:Number(document.getElementById('ac-o-new').value)||0});
-      if(!next.length)next.push({name:'주거래계좌',opening:0});
-      D.accounts=next;return await saveAll('계좌 저장됨');},null);
+  const rows=(D.accounts||[]).map(a=>_accRow(a.name,a.opening)).join('');
+  openM(jt('계좌 관리','Accounts'),
+    '<div id="acc-list">'+rows+'</div>'
+    +'<button type="button" class="btn btn-sm" onclick="document.getElementById(\'acc-list\').insertAdjacentHTML(\'beforeend\',_accRow())">+ '+jt('계좌 추가','Add account')+'</button>'
+    +'<div class="muted" style="font-size:11.5px;margin-top:8px">'+jt('🗑 아이콘으로 계좌를 개별 삭제할 수 있습니다.','Delete an account with the 🗑 icon.')+'</div>',
+    async()=>{const next=[];document.querySelectorAll('#acc-list .accrow').forEach(function(r){var nm=r.querySelector('.acc-name').value.trim();if(!nm)return;next.push({name:nm,opening:Number(r.querySelector('.acc-open').value)||0});});
+      if(!next.length){toast(jt('계좌를 1개 이상 남겨주세요','Keep at least one account'));return false;}
+      D.accounts=next;return await saveAll(jt('계좌 저장됨','Accounts saved'));},null);
 }
 function csvFunds(){const rows=[['날짜','구분','계좌','항목','금액','메모']];(D.funds||[]).forEach(f=>rows.push([f.date,f.kind,f.account,f.category,f.amt,f.memo]));dlCsv('funds_corp_us_erp.csv',rows);}
 
@@ -1785,6 +1790,40 @@ async function seedSample(save){
     {id:cid(),date:dt(-5),type:'방문',client:C3,content:'클리닉 방문, Picocare 데모 일정 협의',next:'데모 일정 확정',nextDate:dt(4),doneNext:false},
     {id:cid(),date:dt(-8),type:'이메일',client:'Miami Aesthetic Center',content:'전시회 팔로업 자료 발송',next:'',nextDate:'',doneNext:false},
     {id:cid(),date:dt(-15),type:'미팅',client:C1,content:'Oligio Kiss 계약 체결',next:'',nextDate:'',doneNext:true},
+  ];
+  // 고객사 주소·좌표 (지도 연동)
+  const CADDR={};
+  CADDR[C1]=['1250 6th St, Santa Monica, CA 90401',34.0154,-118.4960];
+  CADDR[C2]=['2160 Lemoine Ave, Fort Lee, NJ 07024',40.8509,-73.9701];
+  CADDR[C3]=['436 N Bedford Dr, Beverly Hills, CA 90210',34.0712,-118.4003];
+  CADDR['Miami Aesthetic Center']=['1691 Michigan Ave, Miami Beach, FL 33139',25.7907,-80.1300];
+  D.clients.forEach(c=>{const a=CADDR[c.name];if(a){c.address=a[0];c.lat=a[1];c.lng=a[2];}});
+  // 장비(시리얼 단위) — 선적/구매와 유기적 연결
+  const OX='Oligio X 본체',LV='Lavieen 본체';
+  const ev=(d,t,x)=>({date:d,type:t,detail:x||''});
+  D.equipment=[
+    {id:cid(),serial:'WT-OX-25001',item:OX,status:'재고',client:'',inDate:dt(-40),shipRef:'SH-2607',outDate:'',outRef:'',note:'',events:[ev(dt(-40),'입고','선적 SH-2607')]},
+    {id:cid(),serial:'WT-OX-25002',item:OX,status:'재고',client:'',inDate:dt(-40),shipRef:'SH-2607',outDate:'',outRef:'',note:'',events:[ev(dt(-40),'입고','선적 SH-2607')]},
+    {id:cid(),serial:'WT-OX-25003',item:OX,status:'출고',client:C1,inDate:dt(-70),shipRef:'SH-2588',outDate:dt(-4),outRef:C1,note:'',events:[ev(dt(-70),'입고','선적 SH-2588'),ev(dt(-4),'출고',C1)]},
+    {id:cid(),serial:'WT-LV-25001',item:LV,status:'설치',client:C3,inDate:dt(-90),shipRef:'SH-2571',outDate:dt(-42),outRef:C3,note:'',events:[ev(dt(-90),'입고','선적 SH-2571'),ev(dt(-42),'출고',C3),ev(dt(-40),'설치',C3+' 설치 완료')]},
+    {id:cid(),serial:'WT-LV-25002',item:LV,status:'AS',client:C3,inDate:dt(-120),shipRef:'SH-2555',outDate:dt(-80),outRef:C3,note:'핸드피스 교체 이력',events:[ev(dt(-120),'입고','선적 SH-2555'),ev(dt(-80),'출고',C3),ev(dt(-2),'AS','핸드피스 오작동 접수')]},
+  ];
+  // 본사 선적 ↔ 법인 입고 대사 (입고완료 + 운송중)
+  D.shipments=[
+    {id:cid(),shipRef:'SH-2607',date:dt(-45),item:OX,qty:2,eta:dt(-40),status:'received',receivedDate:dt(-40),recvQty:2,serials:'WT-OX-25001, WT-OX-25002',moveId:''},
+    {id:cid(),shipRef:'SH-2606',date:dt(-20),item:'Cartridge',qty:50,eta:dt(-16),status:'received',receivedDate:dt(-16),recvQty:50,serials:'',moveId:''},
+    {id:cid(),shipRef:'SH-2612',date:dt(-3),item:OX,qty:2,eta:dt(12),status:'shipped',receivedDate:'',recvQty:null,serials:'',moveId:''},
+    {id:cid(),shipRef:'SH-2611',date:dt(-10),item:LV,qty:1,eta:dt(-2),status:'shipped',receivedDate:'',recvQty:null,serials:'',moveId:''},
+  ];
+  // AS 활동 (장비 WT-LV-25002 연결)
+  D.acts.push({id:cid(),date:dt(-2),type:'AS',client:C3,serial:'WT-LV-25002',content:'Lavieen 핸드피스 오작동 접수 — 부품 교체 필요',next:'부품 재입고 후 방문 설치',nextDate:dt(6),doneNext:false});
+  // 할일 / 일정
+  D.tasks=[
+    {id:cid(),title:'AMP Q3 견적서 발송',date:dt(2),time:'10:00',owner:'James Park',memo:'',done:false},
+    {id:cid(),title:'Beverly Hills 데모 준비 (Picocare)',date:dt(4),time:'14:00',owner:'James Park',memo:'',done:false},
+    {id:cid(),title:'US Dermal 가격 승인 본사 확인',date:dt(-1),time:'',owner:'Kevin Lee',memo:'',done:false},
+    {id:cid(),title:'Lavieen AS 부품 발주 (WT-LV-25002)',date:dt(1),time:'',owner:'Kevin Lee',memo:'',done:false},
+    {id:cid(),title:'월말 재고 실사',date:dt(6),time:'',owner:'',memo:'',done:false},
   ];
   // 목표: 올해 12개월 (월평균 매출 수준 ×1.1)
   const yr=curYr();D.targets={};
