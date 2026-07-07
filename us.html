@@ -512,7 +512,7 @@ function vSales(){
   L.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tot=L.reduce((a,s)=>a+(+s.amt||0),0), col=L.reduce((a,s)=>a+colSum(s),0), out=L.reduce((a,s)=>a+outAmt(s),0);
   const rows=L.length?L.map(s=>{const o=outAmt(s);const b=agingBucket(s);
-    return `<tr onclick="dwSale('${s.id}')"><td class="l">${s.date}</td><td class="l"><b style="color:var(--ink)">${esc(s.client)}</b></td><td class="l">${esc(s.product)||'-'}</td><td>${s.qty||'-'}</td>
+    return `<tr onclick="dwSale('${s.id}')"><td class="l">${s.date}</td><td class="l" onclick="event.stopPropagation();openClient('${esc(s.client).replace(/'/g,"&#39;")}')" style="cursor:pointer" title="${jt('거래처 상세','Client detail')}"><b style="color:var(--ink);border-bottom:1px dotted #cbd5e1">${esc(s.client)}</b></td><td class="l">${esc(s.product)||'-'}</td><td>${s.qty||'-'}</td>
     <td><b>${fm(s.amt)}</b></td><td style="color:var(--ok)">${colSum(s)?fm(colSum(s)):'-'}</td>
     <td>${o>0?`<b style="color:var(--bad)">${fm(o)}</b>${b&&b!=='30내'?` <span class="chip c-${b==='90+'?'red':'amber'}">${b}</span>`:''}`:'<span class="chip c-green">완납</span>'}</td>
     <td>${o>0?`<button class="btn btn-sm" onclick="event.stopPropagation();quickCollect('${s.id}')" title="잔액 전액 오늘 수금">＋수금</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">매출 기록이 없습니다</td></tr>';
@@ -591,16 +591,13 @@ function vAR(){
   const clArr=Object.entries(byCl).sort((a,b)=>b[1]-a[1]);const maxCl=Math.max(1,...clArr.map(x=>x[1]));
   const chips=Object.keys(ag).map(k=>`<button class="btn btn-sm ${fAg===k?'btn-primary':''}" onclick="fAg=fAg==='${k}'?'':'${k}';render()">${k} ${fmS(ag[k])}</button>`).join('');
   const rows=L.length?L.map(s=>{const d=daysBetween(s.date,today());const b=agingBucket(s);
-    return `<tr onclick="dwSale('${s.id}')"><td class="l">${s.date}</td><td class="l"><b style="color:var(--ink)">${esc(s.client)}</b></td><td class="l">${esc(s.product)||'-'}</td>
+    return `<tr onclick="dwSale('${s.id}')"><td class="l">${s.date}</td><td class="l" onclick="event.stopPropagation();openClient('${esc(s.client).replace(/'/g,"&#39;")}')" style="cursor:pointer" title="${jt('거래처 상세','Client detail')}"><b style="color:var(--ink);border-bottom:1px dotted #cbd5e1">${esc(s.client)}</b></td><td class="l">${esc(s.product)||'-'}</td>
     <td>${fm(s.amt)}</td><td style="color:var(--ok)">${fm(colSum(s))}</td><td><b style="color:var(--bad)">${fm(outAmt(s))}</b></td>
     <td><span class="chip c-${b==='90+'?'red':b==='60+'?'amber':b==='30+'?'amber':'gray'}">${d}일</span></td>
     <td><button class="btn btn-sm" onclick="event.stopPropagation();quickCollect('${s.id}')">＋수금</button></td></tr>`;}).join(''):'<tr><td colspan="8" class="empty" style="color:var(--ok)">미수 채권이 없습니다 🎉</td></tr>';
   return head('⏳ 미수금 현황','받을 돈(매출−수금) · 경과일 필터 · 행 클릭 → 수금 처리',
     chips+`<button class="btn btn-sm" onclick="csvAR()"><i class="bi bi-download"></i> CSV</button>`)
-    +`<div class="card" style="margin-bottom:14px;display:flex;gap:26px;align-items:center;flex-wrap:wrap">
-      <div><div class="muted" style="font-size:12px">미수 합계${fAg?' ('+fAg+')':''}</div><div style="font-size:24px;font-weight:800;color:var(--bad)">${fm(tot)}</div><div class="muted" style="font-size:11.5px">${fkrw(tot)}</div></div>
-      <div><div class="muted" style="font-size:12px">건수</div><div style="font-size:24px;font-weight:800;color:var(--ink)">${L.length}</div></div></div>
-    ${clArr.length?`<div class="card" style="margin-bottom:14px"><div class="sect"><span>🏢 거래처별 미수 요약</span></div>
+    +`${clArr.length?`<div class="card" style="margin-bottom:14px"><div class="sect"><span>🏢 거래처별 미수 요약</span><span style="font-size:12.5px;color:var(--body);font-weight:600">${jt('합계','Total')} <b style="color:var(--bad);font-size:15px">${fm(tot)}</b> · ${L.length}${jt('건','')}${fAg?' <span class="muted" style="font-weight:400">('+fAg+')</span>':''} <span class="muted" style="font-weight:400">${fkrw(tot)}</span></span></div>
       ${clArr.map(([c,v])=>`<div onclick="openClient('${esc(c).replace(/'/g,"&#39;")}')" style="display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer"><div style="width:220px;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c)}</div><div class="bar" style="flex:1"><i style="width:${v/maxCl*100}%;background:var(--bad)"></i></div><div style="width:100px;text-align:right;font-size:12px;font-weight:700;color:var(--bad)">${fm(v)}</div></div>`).join('')}</div>`:''}
     <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">인식일</th><th class="l">거래처</th><th class="l">제품</th><th>매출</th><th>수금</th><th>미수</th><th>경과</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
@@ -611,7 +608,7 @@ function vOrders(){
   const L=(D.orders||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const back=L.filter(o=>o.status!=='납품완료'&&o.status!=='취소');
   const rows=L.length?L.map(o=>{const late=o.eta&&o.eta<today()&&o.status!=='납품완료'&&o.status!=='취소';
-    return `<tr onclick="mOrder('${o.id}')"><td class="l">${o.date}</td><td class="l"><b style="color:var(--ink)">${esc(o.client)}</b></td><td class="l">${esc(o.product)||'-'}</td><td>${o.qty||'-'}</td><td><b>${fm(o.amt)}</b></td>
+    return `<tr onclick="mOrder('${o.id}')"><td class="l">${o.date}</td><td class="l" onclick="event.stopPropagation();openClient('${esc(o.client).replace(/'/g,"&#39;")}')" style="cursor:pointer" title="${jt('거래처 상세','Client detail')}"><b style="color:var(--ink);border-bottom:1px dotted #cbd5e1">${esc(o.client)}</b></td><td class="l">${esc(o.product)||'-'}</td><td>${o.qty||'-'}</td><td><b>${fm(o.amt)}</b></td>
     <td class="l">${ordChip(o.status)}</td><td class="l" style="${late?'color:var(--bad);font-weight:700':''}">${o.eta?o.eta+(late?' ⚠':((o.status!=='납품완료'&&o.status!=='취소'&&daysBetween(today(),o.eta)<=7)?' · D-'+daysBetween(today(),o.eta):'')):'-'}</td>
     <td>${(o.status!=='납품완료'&&o.status!=='취소')?`<button class="btn btn-sm" onclick="event.stopPropagation();convertOrder('${o.id}')" title="납품완료 + 매출 자동 생성">✓ 납품→매출</button>`:(o.saleId?'<span class="chip c-green">매출 연결</span>':'')}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">수주 기록이 없습니다</td></tr>';
   return head('📝 수주 관리','수주 → 생산 → 선적 → 납품(매출 전환) · 행 클릭 → 수정',
@@ -750,7 +747,7 @@ function vFunds(){
       return `<div class="card" style="margin-bottom:14px"><div class="sect"><span>📊 월별 입출금 (${yr2})</span><span class="muted" style="font-size:11.5px">${jt('진=입금 · 연=출금','dark = in · light = out')}</span></div>
       <div class="combo">${Array.from({length:12},(_,i)=>{const m=i+1,iv=im[m]||0,ov=om[m]||0;
         return `<div class="mcol"><div class="bars"><div class="b1" style="height:${iv/mx2*100}%;background:var(--ok)" title="${m}월 입금 ${fm(iv)}"></div><div class="b2" style="height:${ov/mx2*100}%;background:#e3a5a5" title="${m}월 출금 ${fm(ov)}"></div></div><div class="ml">${m}월</div></div>`;}).join('')}</div></div>`;})()}
-    <div class="card" style="margin-bottom:14px;display:flex;gap:26px"><div><div class="muted" style="font-size:12px">${fFundYm||'전체'} 입금</div><div style="font-size:20px;font-weight:800;color:var(--ok)">+${fm(inn)}</div></div><div><div class="muted" style="font-size:12px">출금</div><div style="font-size:20px;font-weight:800;color:var(--bad)">-${fm(out)}</div></div><div><div class="muted" style="font-size:12px">순증감</div><div style="font-size:20px;font-weight:800;color:${inn-out<0?'var(--bad)':'var(--ok)'}">${inn-out>=0?'+':''}${fm(inn-out)}</div></div></div>
+    <div class="card" style="margin-bottom:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center"><div><div class="muted" style="font-size:12px">${fFundYm||'전체'} ${jt('입금','Inflow')}</div><div style="font-size:20px;font-weight:800;color:var(--ok)">+${fm(inn)}</div></div><div style="border-left:1px solid var(--line);border-right:1px solid var(--line)"><div class="muted" style="font-size:12px">${jt('출금','Outflow')}</div><div style="font-size:20px;font-weight:800;color:var(--bad)">-${fm(out)}</div></div><div><div class="muted" style="font-size:12px">${jt('순증감','Net')}</div><div style="font-size:20px;font-weight:800;color:${inn-out<0?'var(--bad)':'var(--ok)'}">${inn-out>=0?'+':''}${fm(inn-out)}</div></div></div>
     <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">날짜</th><th class="l">구분</th><th class="l">계좌</th><th class="l">항목</th><th>금액(${CUR})</th><th class="l">메모</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function mFund(id){const f=id?(D.funds||[]).find(x=>x.id===id):{date:today(),kind:'입금',account:(D.accounts[0]||{}).name||'주거래계좌',category:'',amt:'',memo:''};
