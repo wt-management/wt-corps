@@ -141,6 +141,7 @@ tbody tr{cursor:pointer}tbody tr:hover td{background:#f8f9ff}
       <div class="grp">경영 요약</div>
       <a class="active" data-v="dash"><span class="ico">📈</span><span class="lbl">임원 대시보드</span></a>
       <a data-v="report"><span class="ico">📋</span><span class="lbl">월간 리포트</span></a>
+      <a data-v="sched"><span class="ico">📅</span><span class="lbl">일정 · 할일</span></a>
       <div class="grp">CRM 영업</div>
       <a data-v="pipe"><span class="ico">🎯</span><span class="lbl">딜 파이프라인</span></a>
       <a data-v="accounts"><span class="ico">👥</span><span class="lbl">고객사 관리</span></a>
@@ -195,7 +196,7 @@ const DEAL_OPEN=['리드','상담중','견적발송','협의중'];
 const ACT_T={'콜':'c-blue','미팅':'c-violet','이메일':'c-gray','방문':'c-green'};
 const GRADE_C={'A':'c-red','B':'c-amber','C':'c-gray'};
 let ME='',curView='dash',D=null,LOCAL=false;
-const blank=()=>({v:3,rate:1350,targets:{},accounts:[{name:'주거래계좌',opening:0}],sales:[],orders:[],items:[],moves:[],funds:[],expenses:[],clients:[],deals:[],acts:[]});
+const blank=()=>({v:3,rate:1350,targets:{},accounts:[{name:'주거래계좌',opening:0}],sales:[],orders:[],items:[],moves:[],funds:[],expenses:[],clients:[],deals:[],acts:[],tasks:[]});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.random().toString(16).slice(2);
 
 // ── 부트 ──
@@ -212,7 +213,7 @@ function migrate(){ // v1 → v2: sales에 collections 없으면 빈배열, targ
   (D.sales||[]).forEach(s=>{if(!s.collections)s.collections=[];});
   if(!D.targets)D.targets={};
   if(!D.accounts||!D.accounts.length)D.accounts=[{name:'주거래계좌',opening:0}];
-  if(!D.clients)D.clients=[];if(!D.deals)D.deals=[];if(!D.acts)D.acts=[];
+  if(!D.clients)D.clients=[];if(!D.deals)D.deals=[];if(!D.acts)D.acts=[];if(!D.tasks)D.tasks=[];
 }
 function ready(){document.getElementById('boot-ov').style.display='none';document.getElementById('app').style.display='block';render();}
 async function saveAll(msg){
@@ -230,7 +231,7 @@ let L=localStorage.getItem('us_lang')||'ko';
 function jt(ko,en){return L==='en'?en:ko;}
 const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const EN={
-'임원 대시보드':'Executive Dashboard','월간 리포트':'Monthly Report','영업 성과':'Sales Performance','📋 월간 경영 리포트':'📋 Monthly Business Report','🏆 영업 성과':'🏆 Sales Performance','경영 요약':'EXECUTIVE','CRM 영업':'CRM','영업 · 채권':'SALES & AR','운영':'OPERATIONS',
+'임원 대시보드':'Executive Dashboard','월간 리포트':'Monthly Report','영업 성과':'Sales Performance','일정 · 할일':'Schedule · Tasks','📅 일정 / 할일':'📅 Schedule & Tasks','📋 월간 경영 리포트':'📋 Monthly Business Report','🏆 영업 성과':'🏆 Sales Performance','경영 요약':'EXECUTIVE','CRM 영업':'CRM','영업 · 채권':'SALES & AR','운영':'OPERATIONS',
 '딜 파이프라인':'Deal Pipeline','고객사 관리':'Accounts','활동 기록':'Activities','매출 · 수금':'Sales & Collections','미수금 현황':'Receivables (AR)','수주 관리':'Orders','거래처 분석':'Client Analysis','물류 · 재고':'Inventory','자금 관리':'Cash Management','사이트 이동':'Sites','비밀번호':'Password','로그아웃':'Logout',
 '📈 임원 대시보드':'📈 Executive Dashboard','🎯 딜 파이프라인':'🎯 Deal Pipeline','👥 고객사 관리':'👥 Accounts','📞 활동 기록':'📞 Activities','🧾 매출 · 수금':'🧾 Sales & Collections','⏳ 미수금 현황':'⏳ Receivables (AR)','📝 수주 관리':'📝 Orders','🏢 거래처 분석':'🏢 Client Analysis','📦 물류 · 재고':'📦 Inventory','🏦 자금 관리':'🏦 Cash Management',
 '미국법인 경영 현황':'WONTECH USA Overview','환율':'FX','기준':'as of',
@@ -332,7 +333,7 @@ function itemQty(name){const it=(D.items||[]).find(i=>i.name===name);let q=it?(+
 // ── 라우팅 ──
 function setView(v){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>setView(a.dataset.v)));
-function render(){const f={dash:vDash,report:vReport,perf:vPerf,pipe:vPipe,accounts:vAccounts,acts:vActs,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,funds:vFunds}[curView];document.getElementById('view').innerHTML=f();if(curView==='pipe')bindKb();applyLang();}
+function render(){const f={dash:vDash,report:vReport,perf:vPerf,sched:vSched,pipe:vPipe,accounts:vAccounts,acts:vActs,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,funds:vFunds}[curView];document.getElementById('view').innerHTML=f();if(curView==='pipe')bindKb();applyLang();}
 function head(t,d,acts){return `<div class="topbar"><div><h2>${t}</h2><div class="desc">${d}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${acts||''}</div></div><div class="wrap">`;}
 function isEmpty(){return !(D.sales||[]).length&&!(D.orders||[]).length&&!(D.funds||[]).length&&!(D.items||[]).length;}
 
@@ -957,6 +958,82 @@ function vReport(){
         <div class="card"><div class="sect"><span>📦 ${jt('제품별 매출','Revenue by Product')}</span></div>${prArr.length?prArr.map(([p,v])=>`<div style="display:flex;align-items:center;gap:9px;padding:5px 0"><div style="width:130px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p)}</div><div class="bar" style="flex:1"><i style="width:${v/maxPr*100}%"></i></div><div style="width:80px;text-align:right;font-size:12px;font-weight:700">${fm(v)}</div></div>`).join(''):'<div class="empty">'+jt('당월 매출 없음','No sales this month')+'</div>'}</div>
         <div class="card"><div class="sect"><span>🏢 ${jt('거래처별 매출','Revenue by Client')}</span></div>${clArr.length?clArr.map(([c,v])=>`<div style="display:flex;align-items:center;gap:9px;padding:5px 0"><div style="width:150px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c)}</div><div class="bar" style="flex:1"><i style="width:${v/maxCl*100}%"></i></div><div style="width:80px;text-align:right;font-size:12px;font-weight:700">${fm(v)}</div></div>`).join(''):'<div class="empty">'+jt('당월 매출 없음','No sales this month')+'</div>'}</div>
       </div></div>`;
+}
+
+// ── 일정 / 할일 (통합 캘린더) ──
+let schMode='today', schRef=new Date();
+const SCH_KIND={'할일':{c:'#4f46e5',i:'✅',en:'Task'},'딜':{c:'#7c3aed',i:'🎯',en:'Deal action'},'후속':{c:'#ea580c',i:'📞',en:'Follow-up'},'납기':{c:'#0891b2',i:'🚚',en:'Order ETA'}};
+function schWeekDays(ref){const x=new Date(ref);const day=(x.getDay()+6)%7;x.setHours(0,0,0,0);x.setDate(x.getDate()-day);const a=[];for(let i=0;i<7;i++){const d=new Date(x);d.setDate(d.getDate()+i);a.push(d);}return a;}
+function fmtD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function schItems(){
+  const out=[];
+  (D.tasks||[]).forEach(t=>{if(t.date)out.push({date:t.date,time:t.time||'',kind:'할일',title:t.title,owner:t.owner||'',done:!!t.done,ref:'task',id:t.id});});
+  (D.deals||[]).filter(d=>DEAL_OPEN.includes(d.stage)&&d.next&&d.nextDate).forEach(d=>out.push({date:d.nextDate,time:'',kind:'딜',title:d.client+' · '+d.next,owner:d.owner||'',done:false,ref:'deal',id:d.id}));
+  (D.acts||[]).filter(a=>a.next&&a.nextDate&&!a.doneNext).forEach(a=>out.push({date:a.nextDate,time:'',kind:'후속',title:a.client+' · '+a.next,owner:'',done:false,ref:'act',id:a.id}));
+  (D.orders||[]).filter(o=>o.eta&&o.status!=='납품완료'&&o.status!=='취소').forEach(o=>out.push({date:o.eta,time:'',kind:'납기',title:o.client+' '+(o.product||'')+(L==='en'?' delivery':' 납기'),owner:'',done:false,ref:'order',id:o.id}));
+  return out;
+}
+function schClick2(ref,id){if(ref==='task')mTask(id);else if(ref==='deal')mDeal(id);else if(ref==='act')setView('acts');else if(ref==='order')mOrder(id);}
+async function toggleTask(id){const t=(D.tasks||[]).find(x=>x.id===id);if(!t)return;t.done=!t.done;await saveAll(t.done?jt('완료','Done'):jt('해제','Reopened'));}
+function schCard(it){const k=SCH_KIND[it.kind];const overdue=it.date<today()&&!it.done;
+  return `<div style="border-left:3px solid ${k.c};background:#f8fafc;border-radius:7px;padding:7px 9px;margin-bottom:6px;${it.done?'opacity:.55':''}">
+    <div style="display:flex;gap:6px;align-items:center">${it.ref==='task'?`<input type="checkbox" ${it.done?'checked':''} onclick="event.stopPropagation();toggleTask('${it.id}')" style="cursor:pointer">`:''}
+      <span class="chip" style="background:${k.c}22;color:${k.c};font-size:10px">${k.i} ${jt(it.kind,k.en)}</span>${it.time?`<span class="muted" style="font-size:11px">${it.time}</span>`:''}${overdue?`<span class="chip c-red" style="font-size:9.5px">${jt('지연','late')}</span>`:''}</div>
+    <div onclick="schClick2('${it.ref}','${it.id}')" style="font-size:12.5px;font-weight:600;color:var(--ink);margin-top:4px;cursor:pointer;${it.done?'text-decoration:line-through':''}">${esc(it.title)}</div>
+    ${it.owner?`<div class="muted" style="font-size:10.5px;margin-top:2px">👤 ${esc(it.owner)}</div>`:''}</div>`;
+}
+function schNav(delta){if(schMode==='week')schRef.setDate(schRef.getDate()+delta*7);else schRef.setMonth(schRef.getMonth()+delta);schRef=new Date(schRef);render();}
+function vSched(){
+  const t=today(), items=schItems();
+  const overdue=items.filter(x=>x.date<t&&!x.done);
+  const todayN=items.filter(x=>x.date===t&&!x.done).length;
+  const wkSet=new Set(schWeekDays(new Date()).map(fmtD));
+  const weekN=items.filter(x=>wkSet.has(x.date)&&!x.done).length;
+  const seg=`<div class="seg"><button class="${schMode==='today'?'on':''}" onclick="schMode='today';render()">${jt('오늘','Today')}</button><button class="${schMode==='week'?'on':''}" onclick="schMode='week';render()">${jt('주간','Week')}</button><button class="${schMode==='month'?'on':''}" onclick="schMode='month';render()">${jt('월간','Month')}</button></div>`;
+  const nav=schMode!=='today'?`<button class="btn btn-sm" onclick="schNav(-1)"><i class="bi bi-chevron-left"></i></button><button class="btn btn-sm" onclick="schRef=new Date();render()">${jt('오늘','Today')}</button><button class="btn btn-sm" onclick="schNav(1)"><i class="bi bi-chevron-right"></i></button>`:'';
+  const legend=`<div style="display:flex;gap:15px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-bottom:12px">${Object.keys(SCH_KIND).map(k=>`<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${SCH_KIND[k].c};margin-right:4px;vertical-align:middle"></span>${SCH_KIND[k].i} ${jt(k,SCH_KIND[k].en)}</span>`).join('')}</div>`;
+  const body=schMode==='today'?schToday():schMode==='week'?schWeek():schMonth();
+  return head('📅 일정 / 할일', jt('딜 액션 · 활동 후속 · 수주 납기 + 내 할일을 한 곳에서','Deal actions, follow-ups, order ETAs + your tasks — all in one'),
+    seg+nav+`<button class="btn btn-primary" onclick="mTask()">+ ${jt('할일','Task')}</button>`)
+    +`<div class="grid kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="kpi"><div class="v">${todayN}</div><div class="l">${jt('오늘 할 일','Due today')}</div></div>
+      <div class="kpi"><div class="v">${weekN}</div><div class="l">${jt('이번주','This week')}</div></div>
+      <div class="kpi"><div class="v" style="color:${overdue.length?'var(--bad)':'var(--ink)'}">${overdue.length}</div><div class="l">${jt('지연','Overdue')}</div></div></div>
+    ${legend}${body}</div>`;
+}
+function schToday(){
+  const t=today(), items=schItems();
+  const overdue=items.filter(x=>x.date<t&&!x.done).sort((a,b)=>a.date.localeCompare(b.date));
+  const tod=items.filter(x=>x.date===t).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const upcoming=items.filter(x=>x.date>t&&!x.done).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,10);
+  return `<div class="grid" style="grid-template-columns:1fr 1fr">
+    <div>${overdue.length?`<div class="card" style="margin-bottom:14px;border-color:#fecaca"><div class="sect"><span style="color:var(--bad)">⚠️ ${jt('지연된 일','Overdue')} · ${overdue.length}</span></div>${overdue.map(schCard).join('')}</div>`:''}
+      <div class="card"><div class="sect"><span>📌 ${jt('오늘','Today')} · ${t}</span></div>${tod.length?tod.map(schCard).join(''):`<div class="empty">${jt('오늘 예정된 일이 없습니다 👌','Nothing scheduled today 👌')}</div>`}</div></div>
+    <div class="card"><div class="sect"><span>⏭️ ${jt('다가오는 일정','Upcoming')}</span></div>${upcoming.length?upcoming.map(x=>`<div style="margin-bottom:2px"><div class="muted" style="font-size:10.5px;margin:6px 0 2px">${x.date} <span style="color:#cbd5e1">· D-${daysBetween(t,x.date)}</span></div>${schCard(x)}</div>`).join(''):`<div class="empty">${jt('예정된 일 없음','Nothing upcoming')}</div>`}</div></div>`;
+}
+function schWeek(){
+  const days=schWeekDays(schRef), items=schItems();
+  const dn=['월','화','수','목','금','토','일'], dnE=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const rangeL=fmtD(days[0])+' ~ '+fmtD(days[6]);
+  return `<div class="muted" style="font-size:12.5px;margin-bottom:10px">${rangeL}</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">${days.map((d,i)=>{const ds=fmtD(d);const its=items.filter(x=>x.date===ds).sort((a,b)=>(a.time||'').localeCompare(b.time||''));const isT=ds===today();
+    return `<div style="background:#fff;border:1px solid ${isT?'#bfdbfe':'var(--line)'};border-radius:11px;min-height:140px;${isT?'box-shadow:0 0 0 2px #bfdbff55':''}"><div style="padding:8px 10px;border-bottom:1px solid var(--line2);font-size:12px;font-weight:700;color:${i===6?'#dc2626':i===5?'#2563eb':'var(--ink)'};display:flex;justify-content:space-between"><span>${jt(dn[i],dnE[i])} ${d.getDate()}</span><span class="muted" style="font-weight:500">${its.length||''}</span></div><div style="padding:7px">${its.map(schCard).join('')}</div></div>`;}).join('')}</div>`;
+}
+function schMonth(){
+  const y=schRef.getFullYear(),m=schRef.getMonth();const start=schWeekDays(new Date(y,m,1))[0];const items=schItems();
+  const dn=['월','화','수','목','금','토','일'], dnE=['Mo','Tu','We','Th','Fr','Sa','Su'];
+  let cells='';for(let i=0;i<42;i++){const d=new Date(start);d.setDate(d.getDate()+i);const ds=fmtD(d);const other=d.getMonth()!==m;const isT=ds===today();const its=items.filter(x=>x.date===ds);
+    cells+=`<div style="min-height:92px;border:1px solid var(--line2);padding:3px 5px;${isT?'background:#eff6ff':other?'background:#fafbfc':''};overflow:hidden"><div style="font-size:11px;font-weight:700;color:${other?'#cbd5e1':(d.getDay()===0?'#dc2626':'var(--ink)')}">${d.getDate()}</div>${its.slice(0,3).map(x=>`<div onclick="schClick2('${x.ref}','${x.id}')" title="${esc(x.title)}" style="font-size:9.5px;border-radius:3px;padding:1px 4px;margin-top:2px;background:${SCH_KIND[x.kind].c};color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;${x.done?'opacity:.5':''}">${SCH_KIND[x.kind].i} ${esc(x.title)}</div>`).join('')}${its.length>3?`<div style="font-size:9px;color:var(--muted);margin-top:1px">+${its.length-3}</div>`:''}</div>`;}
+  return `<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px">${jt(y+'년 '+(m+1)+'월', MONTHS_EN[m]+' '+y)}</div><div style="display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff">${dn.map((x,i)=>`<div style="padding:7px;text-align:center;font-size:11px;font-weight:700;color:var(--muted);background:#fafbfc;border-bottom:1px solid var(--line)">${jt(x,dnE[i])}</div>`).join('')}${cells}</div>`;
+}
+function mTask(id){const tk=id?(D.tasks||[]).find(x=>x.id===id):{title:'',date:today(),time:'',owner:(ME.split('@')[0]||''),memo:'',done:false};
+  openM(id?jt('할일 수정','Edit Task'):jt('할일 추가','New Task'),
+    `<div class="fld"><label>${jt('할 일','Task')}</label><input id="f-title" value="${esc(tk.title)}" placeholder="${jt('예: Beverly Hills 데모 준비','e.g. Prep demo for Beverly Hills')}"></div>
+    <div class="fr3"><div class="fld"><label>${jt('날짜','Date')}</label><input id="f-date" type="date" value="${tk.date||today()}"></div><div class="fld"><label>${jt('시간','Time')}</label><input id="f-time" type="time" value="${tk.time||''}"></div><div class="fld"><label>${jt('담당','Owner')}</label><input id="f-owner" value="${esc(tk.owner||'')}"></div></div>
+    <div class="fld"><label>${jt('메모','Notes')}</label><input id="f-memo" value="${esc(tk.memo||'')}"></div>`,
+    async()=>{const g=x=>document.getElementById(x).value;const rec={id:id||uid(),title:g('f-title').trim(),date:g('f-date'),time:g('f-time'),owner:g('f-owner').trim(),memo:g('f-memo').trim(),done:(id&&tk.done)||false};
+      if(!rec.title){toast(jt('할 일을 입력하세요','Enter a task'));return false;}
+      const i=(D.tasks||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.tasks[i]=rec;else D.tasks.push(rec);return await saveAll();},
+    id?async()=>{D.tasks=D.tasks.filter(x=>x.id!==id);await saveAll(jt('삭제됨','Deleted'));}:null);
 }
 
 // ── 공용 모달 / 드로어 ──
