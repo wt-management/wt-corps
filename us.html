@@ -245,7 +245,7 @@ function jt(ko,en){return L==='en'?en:ko;}
 const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const EN={
 '임원 대시보드':'Executive Dashboard','월간 리포트':'Monthly Report','영업 성과':'Sales Performance','일정 · 할일':'Schedule · Tasks','📅 일정 / 할일':'📅 Schedule & Tasks','📋 월간 경영 리포트':'📋 Monthly Business Report','🏆 영업 성과':'🏆 Sales Performance','경영 요약':'EXECUTIVE','CRM 영업':'CRM','영업 · 채권':'SALES & AR','운영':'OPERATIONS',
-'딜 파이프라인':'Deal Pipeline','고객사 관리':'Accounts','활동 기록':'Activities','매출 · 수금':'Sales & Collections','미수금 현황':'Receivables (AR)','수주 관리':'Orders','거래처 분석':'Client Analysis','물류 · 재고':'Inventory','자금 관리':'Cash Management','사이트 이동':'Sites','비밀번호':'Password','로그아웃':'Logout',
+'딜 파이프라인':'Deal Pipeline','고객사 관리':'Accounts','활동 기록':'Activities','매출 · 수금':'Sales & Collections','미수금 현황':'Receivables (AR)','수주 관리':'Orders','거래처 분석':'Client Analysis','물류 · 재고':'Inventory','자금 관리':'Cash Management','사이트 이동':'Sites','비밀번호':'Password','로그아웃':'Logout','미국법인':'US Corp','전사 종합 경영현황':'Group Overview','한국 영업':'Korea Sales','해외 영업':'Global Sales','일본법인 관리':'Japan Corp','미국법인 관리':'USA Corp','태국법인 관리':'Thailand Corp','일일매출보고':'Daily Sales','상품기획 PM':'Product PM','데모 일정':'Demo Schedule','관리자 페이지':'Admin',
 '📈 임원 대시보드':'📈 Executive Dashboard','🎯 딜 파이프라인':'🎯 Deal Pipeline','👥 고객사 관리':'👥 Accounts','📞 활동 기록':'📞 Activities','🧾 매출 · 수금':'🧾 Sales & Collections','⏳ 미수금 현황':'⏳ Receivables (AR)','📝 수주 관리':'📝 Orders','🏢 거래처 분석':'🏢 Client Analysis','📦 물류 · 재고':'📦 Inventory','🏦 자금 관리':'🏦 Cash Management',
 '미국법인 경영 현황':'WONTECH USA Overview','환율':'FX','기준':'as of',
 '카드를 끌어 단계 이동 · 성사 시 수주 자동 생성 · 클릭 → 수정':'Drag to move stage · Won deals auto-create orders · Click to edit',
@@ -290,7 +290,7 @@ function trStr(t){
 }
 function applyLang(){
   const on=(L==='en');
-  ['nav','view','dw','modal'].forEach(id=>{
+  ['sidebar','view','dw','modal'].forEach(id=>{
     const root=document.getElementById(id);if(!root)return;
     const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
     const nodes=[];while(n=w.nextNode())nodes.push(n);
@@ -445,7 +445,7 @@ function vDash(){
   const alerts=[];
   lateOrd.forEach(o=>alerts.push(`<div onclick="mOrder('${o.id}')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">🔴 <b>${esc(o.client)}</b> ${esc(o.product||'')} 납기 ${o.eta} 경과 (${ordChip(o.status)})</div>`));
   backlog.filter(o=>o.eta&&o.eta>=today()&&daysBetween(today(),o.eta)<=7).forEach(o=>alerts.push(`<div onclick="mOrder('${o.id}')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">🟡 <b>${esc(o.client)}</b> ${esc(o.product||'')} 납기 D-${daysBetween(today(),o.eta)}</div>`));
-  low.forEach(i=>alerts.push(`<div onclick="setView('inv')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">📦 <b>${esc(i.name)}</b> 재고 ${itemQty(i.name)}${esc(i.unit||'')} &lt; 안전 ${i.safety}</div>`));
+  low.forEach(i=>alerts.push(`<div onclick="setView('inv')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">📦 <b>${trUser(i.name)}</b> 재고 ${itemQty(i.name)}${trUser(i.unit)} &lt; 안전 ${i.safety}</div>`));
   fu.forEach(a=>alerts.push(`<div onclick="setView('acts')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">📞 <b>${esc(a.client)}</b> 후속조치 지연: ${trUser(a.next)} (${a.nextDate})</div>`));
   fuDeals.forEach(d=>alerts.push(`<div onclick="setView('pipe')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">🎯 <b>${esc(d.client)}</b> 딜 액션 지연: ${trUser(d.next)} (${d.nextDate})</div>`));
   return head('📈 임원 대시보드',`${'미국법인'} 경영 현황 · 환율 ${SYM}1 = ₩${(D.rate||0).toLocaleString()} · 기준 ${today()}`,
@@ -477,7 +477,7 @@ function vDash(){
     <div class="card" style="margin-bottom:14px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:24px" class="dash2col">
       <div><div class="sect"><span>📦 ${jt('재고 현황','Inventory Status')}</span><span class="muted" style="font-size:11.5px;cursor:pointer" onclick="setView('inv')">${jt('관리','manage')} →</span></div>
         ${itemsN?(D.items||[]).map(i=>{const q=itemQty(i.name);const sf=+i.safety||0;const lo=q<sf;const ratio=sf?Math.min(100,q/sf*100):100;
-          return `<div style="padding:6px 0"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><b style="color:var(--ink)">${esc(i.name)}</b><span style="font-weight:700;color:${lo?'var(--bad)':'var(--body)'}">${q}${esc(i.unit||'')}${lo?' ⚠':''}</span></div><div class="bar" style="background:#f1f5f9"><i style="width:${ratio}%;background:${lo?'var(--bad)':'#22c55e'}"></i></div><div style="font-size:10px;color:var(--muted);margin-top:2px">${jt('안전재고','safety')} ${sf}${esc(i.unit||'')}</div></div>`;}).join(''):`<div class="empty">${jt('등록된 품목 없음','No items')}</div>`}</div>
+          return `<div style="padding:6px 0"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><b style="color:var(--ink)">${trUser(i.name)}</b><span style="font-weight:700;color:${lo?'var(--bad)':'var(--body)'}">${q}${trUser(i.unit)}${lo?' ⚠':''}</span></div><div class="bar" style="background:#f1f5f9"><i style="width:${ratio}%;background:${lo?'var(--bad)':'#22c55e'}"></i></div><div style="font-size:10px;color:var(--muted);margin-top:2px">${jt('안전재고','safety')} ${sf}${trUser(i.unit)}</div></div>`;}).join(''):`<div class="empty">${jt('등록된 품목 없음','No items')}</div>`}</div>
       <div><div class="sect"><span>📊 ${jt('제품 Top5 (연간 매출)','Top 5 Products (YTD)')}</span></div>
         ${topPr.length?topPr.map(([p,v])=>`<div style="display:flex;align-items:center;gap:9px;padding:5px 0"><div style="width:130px;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p)}</div><div class="bar" style="flex:1"><i style="width:${v/maxPr*100}%"></i></div><div style="width:76px;text-align:right;font-size:11.5px;font-weight:700">${fmS(v)}</div></div>`).join(''):'<div class="empty">'+jt('매출 데이터 없음','No sales data')+'</div>'}</div>
   </div></div>
@@ -684,9 +684,9 @@ function openClient(name){
 function vInv(){
   const items=(D.items||[]);
   const iRows=items.length?items.map(i=>{const q=itemQty(i.name);const low=q<(+i.safety||0);
-    return `<tr onclick="mItem('${i.id}')"><td class="l"><b style="color:var(--ink)">${esc(i.name)}</b></td><td>${q.toLocaleString()} ${esc(i.unit||'')}</td><td class="muted">${(+i.safety||0).toLocaleString()}</td><td class="l">${esc(i.loc||'-')}</td><td class="l">${low?'<span class="chip c-red">부족</span>':'<span class="chip c-green">정상</span>'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">품목이 없습니다</td></tr>';
+    return `<tr onclick="mItem('${i.id}')"><td class="l"><b style="color:var(--ink)">${trUser(i.name)}</b></td><td>${q.toLocaleString()} ${trUser(i.unit)}</td><td class="muted">${(+i.safety||0).toLocaleString()}</td><td class="l">${trUser(i.loc||'-')}</td><td class="l">${low?'<span class="chip c-red">부족</span>':'<span class="chip c-green">정상</span>'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">품목이 없습니다</td></tr>';
   const mv=(D.moves||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,50);
-  const mRows=mv.length?mv.map(m=>`<tr onclick="mMove('${m.id}')"><td class="l">${m.date}</td><td class="l">${m.type==='입고'?'<span class="chip c-green">입고</span>':'<span class="chip c-amber">출고</span>'}</td><td class="l"><b style="color:var(--ink)">${esc(m.item)}</b></td><td>${(+m.qty||0).toLocaleString()}</td><td class="l muted">${esc(m.ref||'')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">입출고 이력 없음</td></tr>';
+  const mRows=mv.length?mv.map(m=>`<tr onclick="mMove('${m.id}')"><td class="l">${m.date}</td><td class="l">${m.type==='입고'?'<span class="chip c-green">입고</span>':'<span class="chip c-amber">출고</span>'}</td><td class="l"><b style="color:var(--ink)">${trUser(m.item)}</b></td><td>${(+m.qty||0).toLocaleString()}</td><td class="l muted">${trUser(m.ref)}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">입출고 이력 없음</td></tr>';
   return head('📦 물류 · 재고','현재고 = 기초 + 입고 − 출고 자동 계산',
     `<button class="btn" onclick="mItem()">+ 품목</button><button class="btn btn-primary" onclick="mMove()">+ 입출고</button>`)
     +(()=>{const low=(D.items||[]).filter(i=>itemQty(i.name)<(+i.safety||0));const cm=curYm();let inM=0,outM=0;(D.moves||[]).forEach(m=>{if(ym(m.date)===cm){if(m.type==='입고')inM+=+m.qty||0;else outM+=+m.qty||0;}});
