@@ -259,7 +259,7 @@ const EN={
 '총 잔액':'Total Balance','기초':'opening','입금':'IN','출금':'OUT','순증감':'Net','계좌':'Account','항목':'Category','자금 내역 없음':'No entries','입출금 등록':'New Entry','입출금 수정':'Edit Entry','계좌 관리 (이름 · 기초잔액)':'Accounts (name · opening)','매출입금':'Sales deposit','본사 송금':'HQ remittance','주거래계좌':'Main Account','급여계좌':'Payroll Acct','급여':'Payroll','임차료':'Rent','물류비':'Logistics',
 '저장':'Save','삭제':'Delete','닫기':'Close','등록':'Add','저장됨':'Saved','삭제됨':'Deleted','수금 등록':'Collection added','수금 삭제':'Collection removed','환율 저장됨':'FX saved','목표 저장됨':'Targets saved','계좌 저장됨':'Accounts saved','샘플 데이터 저장됨':'Sample data saved','단계 이동':'Stage moved','성사 → 수주 생성됨':'Won → order created','납품완료 + 매출 생성됨':'Delivered + sale created','후속조치 완료':'Follow-up done','수금 처리':'Collected','딜 액션 지연':'deal action overdue',
 '👤 고객 정보':'👤 Contact Info','정보 수정':'Edit Info','고객사 마스터 미등록':'Not in account master','🎯 딜':'🎯 Deals','📞 최근 활동':'📞 Recent Activities','활동 없음':'No activities','🧾 매출 이력':'🧾 Sales History','📝 수주 이력':'📝 Order History','매출 없음':'No sales','수주 없음':'No orders',
-'월별 매출 목표':'Monthly Revenue Targets','임원 대시보드 달성률·목표선에 반영됩니다.':'Reflected in dashboard achievement & target line.',
+'월별 매출 목표':'Monthly Revenue Targets','💡 자동 인사이트':'💡 Auto Insights','📦 제품 Top5 (연간 매출)':'📦 Top 5 Products (YTD)','🏢 거래처별 미수 요약':'🏢 AR by Client','이달 납품 예정':'Due This Month','최근 6개월':'Last 6 mo','등록 품목':'Items','안전재고 미달':'Low Stock','이번달 입고':'IN this mo.','이번달 출고':'OUT this mo.','📊 월별 입출금':'📊 Monthly Cash In/Out','이번달 활동':'Activities (this mo.)','이번주 예정 후속':'Follow-ups This Week','지연 후속':'Overdue Follow-ups','매출 데이터 없음':'No sales data','임원 대시보드 달성률·목표선에 반영됩니다.':'Reflected in dashboard achievement & target line.',
 '년':'','월':'','건':'','명':'','개':'','비어있음':'Empty','딜':'deals'
 };
 const EN_KEYS=Object.keys(EN).filter(k=>k.length>1).sort((a,b)=>b.length-a.length);
@@ -349,6 +349,25 @@ function vDash(){
   const wPipe=openDeals.reduce((a,d)=>a+(+d.amt||0)*(+d.prob||0)/100,0);
   const fu=(D.acts||[]).filter(a=>a.nextDate&&a.nextDate<today()&&!a.doneNext);
   const fuDeals=(D.deals||[]).filter(d=>DEAL_OPEN.includes(d.stage)&&d.next&&d.nextDate&&d.nextDate<today());
+  // 자동 인사이트
+  const prevSale=sm[mo-1]||0;
+  const byClY={};(D.sales||[]).forEach(x=>{if(String(x.date||'').slice(0,4)!==yr)return;byClY[x.client]=(byClY[x.client]||0)+(+x.amt||0);});
+  const topCl=Object.entries(byClY).sort((a,b)=>b[1]-a[1])[0];
+  const byPrY={};(D.sales||[]).forEach(x=>{if(String(x.date||'').slice(0,4)!==yr||!x.product)return;byPrY[x.product]=(byPrY[x.product]||0)+(+x.amt||0);});
+  const topPr=Object.entries(byPrY).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const closingDeals=(D.deals||[]).filter(d=>DEAL_OPEN.includes(d.stage)&&d.expected&&d.expected.slice(0,7)===curYm());
+  const bullets=[];
+  if(mSale||prevSale){const g=prevSale?((mSale/prevSale-1)*100):null;
+    bullets.push({i:'💰',t:jt('이번달 매출 '+fm(mSale)+(g!=null?' — 전월 대비 '+(g>=0?'+':'')+g.toFixed(0)+'%':''),'Revenue this month '+fm(mSale)+(g!=null?' — '+(g>=0?'+':'')+g.toFixed(0)+'% MoM':'')),c:g!=null&&g<0?'var(--bad)':'var(--ok)'});}
+  if(yTgt)bullets.push({i:'🎯',t:jt('목표 달성률 '+achv.toFixed(0)+'% — 누적 '+fm(ySale)+' / 목표 '+fm(yTgt),'Target achievement '+achv.toFixed(0)+'% — '+fm(ySale)+' of '+fm(yTgt)),c:achv>=100?'var(--ok)':achv>=70?'var(--body)':'var(--warn)'});
+  if(topCl&&ySale)bullets.push({i:'🏢',t:jt('최대 거래처 '+topCl[0]+' — 매출 비중 '+pct(topCl[1],ySale).toFixed(0)+'%','Top client '+topCl[0]+' — '+pct(topCl[1],ySale).toFixed(0)+'% of revenue'),c:pct(topCl[1],ySale)>50?'var(--warn)':'var(--body)'});
+  const ag90=(D.sales||[]).reduce((acc,x)=>acc+(agingBucket(x)==='90+'?outAmt(x):0),0);
+  if(ag90)bullets.push({i:'⏳',t:jt('90일+ 장기미수 '+fm(ag90)+' — 회수 우선 필요','AR over 90 days: '+fm(ag90)+' — collection priority'),c:'var(--bad)'});
+  if(closingDeals.length)bullets.push({i:'🤝',t:jt('이달 마감 예정 딜 '+closingDeals.length+'건 · '+fm(closingDeals.reduce((a,d)=>a+(+d.amt||0),0)),closingDeals.length+' deals closing this month · '+fm(closingDeals.reduce((a,d)=>a+(+d.amt||0),0))),c:'var(--brand)'});
+  if(fu.length+fuDeals.length)bullets.push({i:'📞',t:jt('지연된 후속조치 '+(fu.length+fuDeals.length)+'건 — 오늘 처리 권장',(fu.length+fuDeals.length)+' overdue follow-ups — handle today'),c:'var(--warn)'});
+  if(low.length)bullets.push({i:'📦',t:jt('안전재고 미달 '+low.length+'개 품목 — 발주 검토','Low stock on '+low.length+' items — consider reorder'),c:'var(--warn)'});
+  if(!bullets.length)bullets.push({i:'✅',t:jt('특이사항 없음 — 순항 중','All clear'),c:'var(--ok)'});
+  const maxPr=Math.max(1,...topPr.map(x=>x[1]));
   // 히어로
   const gcol=achv>=100?'#4ade80':achv>=70?'#60a5fa':'#fbbf24';
   const hero=`<div class="hero">
@@ -399,7 +418,13 @@ function vDash(){
       <div class="kpi" onclick="setView('inv')" style="cursor:pointer"><div class="v" style="color:${low.length?'var(--bad)':'var(--ink)'}">${low.length}</div><div class="l">재고 부족 품목</div></div>
       <div class="kpi" onclick="setView('pipe')" style="cursor:pointer"><div class="v">${fmS(wPipe)}</div><div class="l">파이프라인 예상 (가중)</div><div class="s">진행 딜 ${openDeals.length}건</div></div>
     </div>
-    <div class="card" style="margin-bottom:14px"><div class="sect"><span>📊 월별 매출 vs 수금 <span class="muted" style="font-weight:500;font-size:11.5px">막대=매출(진), 수금(연) · 점선=목표</span></span><span class="muted" style="font-size:12px">${yr}년</span></div><div class="combo">${combo}</div></div>
+    <div class="card" style="margin-bottom:14px"><div style="display:grid;grid-template-columns:1.3fr 1fr;gap:22px">
+    <div><div class="sect"><span>💡 자동 인사이트</span><span class="muted" style="font-size:11.5px">${jt('데이터 기반 요약','data-driven summary')}</span></div>
+      ${bullets.map(b=>`<div style="display:flex;gap:9px;padding:6px 0;font-size:13px;align-items:flex-start"><span>${b.i}</span><span style="color:${b.c};font-weight:600">${b.t}</span></div>`).join('')}</div>
+    <div><div class="sect"><span>📦 제품 Top5 (연간 매출)</span></div>
+      ${topPr.length?topPr.map(([p,v])=>`<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><div style="width:130px;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p)}</div><div class="bar" style="flex:1"><i style="width:${v/maxPr*100}%"></i></div><div style="width:76px;text-align:right;font-size:11.5px;font-weight:700">${fmS(v)}</div></div>`).join(''):'<div class="empty">'+jt('매출 데이터 없음','No sales data')+'</div>'}</div>
+  </div></div>
+  <div class="card" style="margin-bottom:14px"><div class="sect"><span>📊 월별 매출 vs 수금 <span class="muted" style="font-weight:500;font-size:11.5px">막대=매출(진), 수금(연) · 점선=목표</span></span><span class="muted" style="font-size:12px">${yr}년</span></div><div class="combo">${combo}</div></div>
     <div class="card" style="margin-bottom:14px"><div class="sect"><span>🎯 딜 파이프라인 <span class="muted" style="font-weight:500;font-size:11.5px">CRM · 클릭 → 칸반</span></span><span class="muted" style="font-size:12px;cursor:pointer" onclick="setView('pipe')">전체 →</span></div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
       ${DEAL_OPEN.map(st=>{const ds=(D.deals||[]).filter(d=>d.stage===st);const amt=ds.reduce((a,d)=>a+(+d.amt||0),0);
@@ -420,12 +445,13 @@ function mTargets(){
 }
 
 // ── 매출 · 수금 ──
-let fSalesYm='',fOutOnly=false;
+let fSalesYm='',fOutOnly=false,fSalesQ='';
 function vSales(){
   const yms=monthsOf(D.sales||[]);
   let L=(D.sales||[]).slice();
   if(fSalesYm)L=L.filter(s=>ym(s.date)===fSalesYm);
   if(fOutOnly)L=L.filter(s=>outAmt(s)>0);
+  if(fSalesQ)L=L.filter(s=>((s.client||'')+' '+(s.product||'')).toLowerCase().includes(fSalesQ.toLowerCase()));
   L.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tot=L.reduce((a,s)=>a+(+s.amt||0),0), col=L.reduce((a,s)=>a+colSum(s),0), out=L.reduce((a,s)=>a+outAmt(s),0);
   const rows=L.length?L.map(s=>{const o=outAmt(s);const b=agingBucket(s);
@@ -434,6 +460,7 @@ function vSales(){
     <td>${o>0?`<b style="color:var(--bad)">${fm(o)}</b>${b&&b!=='30내'?` <span class="chip c-${b==='90+'?'red':'amber'}">${b}</span>`:''}`:'<span class="chip c-green">완납</span>'}</td>
     <td>${o>0?`<button class="btn btn-sm" onclick="event.stopPropagation();quickCollect('${s.id}')" title="잔액 전액 오늘 수금">＋수금</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">매출 기록이 없습니다</td></tr>';
   return head('🧾 매출 · 수금','매출인식 기준 · 행 클릭 → 상세(수금내역) · ＋수금 = 잔액 전액 오늘 처리',
+    `<input class="sel" placeholder="🔍 거래처·제품" value="${esc(fSalesQ)}" oninput="fSalesQ=this.value" onkeydown="if(event.key==='Enter')render()" style="width:150px">`+
     `<select class="sel" onchange="fSalesYm=this.value;render()"><option value="">전체 기간</option>${yms.map(m=>`<option ${fSalesYm===m?'selected':''}>${m}</option>`).join('')}</select>`+
     `<button class="btn btn-sm ${fOutOnly?'btn-primary':''}" onclick="fOutOnly=!fOutOnly;render()">미수만</button>`+
     `<button class="btn btn-sm" onclick="csvSales()"><i class="bi bi-download"></i> CSV</button>`+
@@ -503,6 +530,8 @@ function vAR(){
   const tot=L.reduce((a,s)=>a+outAmt(s),0);
   const ag={'30내':0,'30+':0,'60+':0,'90+':0};
   (D.sales||[]).forEach(s=>{const b=agingBucket(s);if(b)ag[b]+=outAmt(s);});
+  const byCl={};(D.sales||[]).forEach(x=>{const o=outAmt(x);if(o>0)byCl[x.client]=(byCl[x.client]||0)+o;});
+  const clArr=Object.entries(byCl).sort((a,b)=>b[1]-a[1]);const maxCl=Math.max(1,...clArr.map(x=>x[1]));
   const chips=Object.keys(ag).map(k=>`<button class="btn btn-sm ${fAg===k?'btn-primary':''}" onclick="fAg=fAg==='${k}'?'':'${k}';render()">${k} ${fmS(ag[k])}</button>`).join('');
   const rows=L.length?L.map(s=>{const d=daysBetween(s.date,today());const b=agingBucket(s);
     return `<tr onclick="dwSale('${s.id}')"><td class="l">${s.date}</td><td class="l"><b style="color:var(--ink)">${esc(s.client)}</b></td><td class="l">${esc(s.product)||'-'}</td>
@@ -514,6 +543,8 @@ function vAR(){
     +`<div class="card" style="margin-bottom:14px;display:flex;gap:26px;align-items:center;flex-wrap:wrap">
       <div><div class="muted" style="font-size:12px">미수 합계${fAg?' ('+fAg+')':''}</div><div style="font-size:24px;font-weight:800;color:var(--bad)">${fm(tot)}</div><div class="muted" style="font-size:11.5px">${fkrw(tot)}</div></div>
       <div><div class="muted" style="font-size:12px">건수</div><div style="font-size:24px;font-weight:800;color:var(--ink)">${L.length}</div></div></div>
+    ${clArr.length?`<div class="card" style="margin-bottom:14px"><div class="sect"><span>🏢 거래처별 미수 요약</span></div>
+      ${clArr.map(([c,v])=>`<div onclick="openClient('${esc(c).replace(/'/g,"&#39;")}')" style="display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer"><div style="width:220px;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c)}</div><div class="bar" style="flex:1"><i style="width:${v/maxCl*100}%;background:var(--bad)"></i></div><div style="width:100px;text-align:right;font-size:12px;font-weight:700;color:var(--bad)">${fm(v)}</div></div>`).join('')}</div>`:''}
     <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">인식일</th><th class="l">거래처</th><th class="l">제품</th><th>매출</th><th>수금</th><th>미수</th><th>경과</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function csvAR(){const rows=[['인식일','거래처','제품','매출','수금','미수','경과일']];(D.sales||[]).filter(s=>outAmt(s)>0).forEach(s=>rows.push([s.date,s.client,s.product,s.amt,colSum(s),outAmt(s),daysBetween(s.date,today())]));dlCsv('ar_corp_us_erp.csv',rows);}
@@ -524,12 +555,13 @@ function vOrders(){
   const back=L.filter(o=>o.status!=='납품완료'&&o.status!=='취소');
   const rows=L.length?L.map(o=>{const late=o.eta&&o.eta<today()&&o.status!=='납품완료'&&o.status!=='취소';
     return `<tr onclick="mOrder('${o.id}')"><td class="l">${o.date}</td><td class="l"><b style="color:var(--ink)">${esc(o.client)}</b></td><td class="l">${esc(o.product)||'-'}</td><td>${o.qty||'-'}</td><td><b>${fm(o.amt)}</b></td>
-    <td class="l">${ordChip(o.status)}</td><td class="l" style="${late?'color:var(--bad);font-weight:700':''}">${o.eta||'-'}${late?' ⚠':''}</td>
+    <td class="l">${ordChip(o.status)}</td><td class="l" style="${late?'color:var(--bad);font-weight:700':''}">${o.eta?o.eta+(late?' ⚠':((o.status!=='납품완료'&&o.status!=='취소'&&daysBetween(today(),o.eta)<=7)?' · D-'+daysBetween(today(),o.eta):'')):'-'}</td>
     <td>${(o.status!=='납품완료'&&o.status!=='취소')?`<button class="btn btn-sm" onclick="event.stopPropagation();convertOrder('${o.id}')" title="납품완료 + 매출 자동 생성">✓ 납품→매출</button>`:(o.saleId?'<span class="chip c-green">매출 연결</span>':'')}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">수주 기록이 없습니다</td></tr>';
   return head('📝 수주 관리','수주 → 생산 → 선적 → 납품(매출 전환) · 행 클릭 → 수정',
     `<button class="btn btn-sm" onclick="csvOrders()"><i class="bi bi-download"></i> CSV</button><button class="btn btn-primary" onclick="mOrder()">+ 수주 등록</button>`)
     +`<div class="grid kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
       <div class="kpi"><div class="v">${fm(back.reduce((a,o)=>a+(+o.amt||0),0))}</div><div class="l">진행 수주 잔고</div><div class="s">${back.length}건</div></div>
+      <div class="kpi"><div class="v" style="color:${back.filter(o=>o.eta&&o.eta.slice(0,7)===curYm()).length?'var(--warn)':'var(--ink)'}">${back.filter(o=>o.eta&&o.eta.slice(0,7)===curYm()).length}</div><div class="l">이달 납품 예정</div><div class="s">${fmS(back.filter(o=>o.eta&&o.eta.slice(0,7)===curYm()).reduce((a,o)=>a+(+o.amt||0),0))}</div></div>
       ${['수주','생산중','선적중','납품완료'].map(st=>`<div class="kpi"><div class="v">${L.filter(o=>o.status===st).length}</div><div class="l">${st}</div></div>`).join('')}</div>
     <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">수주일</th><th class="l">거래처</th><th class="l">제품</th><th>수량</th><th>금액(${CUR})</th><th class="l">상태</th><th class="l">납기</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
@@ -554,14 +586,15 @@ function csvOrders(){const rows=[['수주일','거래처','제품','수량','금
 // ── 거래처 분석 ──
 function vClients(){
   const agg={};
-  (D.sales||[]).forEach(s=>{const c=s.client||'(미지정)';agg[c]=agg[c]||{sale:0,col:0,out:0,ord:0,last:''};agg[c].sale+=+s.amt||0;agg[c].col+=colSum(s);agg[c].out+=outAmt(s);if((s.date||'')>agg[c].last)agg[c].last=s.date;});
-  (D.orders||[]).forEach(o=>{if(o.status==='납품완료'||o.status==='취소')return;const c=o.client||'(미지정)';agg[c]=agg[c]||{sale:0,col:0,out:0,ord:0,last:''};agg[c].ord+=+o.amt||0;});
+  const spark6=[];{const n=new Date();for(let i=5;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);spark6.push(d.toISOString().slice(0,7));}}
+  (D.sales||[]).forEach(s=>{const c=s.client||'(미지정)';agg[c]=agg[c]||{sale:0,col:0,out:0,ord:0,last:'',m:{}};agg[c].sale+=+s.amt||0;agg[c].col+=colSum(s);agg[c].out+=outAmt(s);if((s.date||'')>agg[c].last)agg[c].last=s.date;const k=ym(s.date);if(spark6.includes(k))agg[c].m[k]=(agg[c].m[k]||0)+(+s.amt||0);});
+  (D.orders||[]).forEach(o=>{if(o.status==='납품완료'||o.status==='취소')return;const c=o.client||'(미지정)';agg[c]=agg[c]||{sale:0,col:0,out:0,ord:0,last:'',m:{}};agg[c].ord+=+o.amt||0;});
   const L=Object.entries(agg).sort((a,b)=>b[1].sale-a[1].sale);
   const rows=L.length?L.map(([c,v])=>`<tr onclick="openClient('${esc(c).replace(/'/g,"&#39;")}')"><td class="l"><b style="color:var(--ink)">${esc(c)}</b></td>
     <td><b>${fm(v.sale)}</b></td><td style="color:var(--ok)">${fm(v.col)}</td>
-    <td>${v.out?`<b style="color:var(--bad)">${fm(v.out)}</b>`:'-'}</td><td>${v.ord?fm(v.ord):'-'}</td><td class="l muted">${v.last||'-'}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">거래처 데이터 없음</td></tr>';
+    <td>${v.out?`<b style="color:var(--bad)">${fm(v.out)}</b>`:'-'}</td><td>${v.ord?fm(v.ord):'-'}</td><td>${(()=>{const mx=Math.max(1,...spark6.map(k=>v.m&&v.m[k]||0));return '<div style="display:flex;gap:2px;align-items:flex-end;height:22px;justify-content:flex-end">'+spark6.map(k=>{const h=(v.m&&v.m[k]||0)/mx*100;return '<div title="'+k+'" style="width:6px;background:'+(h?'var(--brand)':'#e8ebf0')+';height:'+Math.max(8,h)+'%;border-radius:2px"></div>';}).join('')+'</div>';})()}</td><td class="l muted">${v.last||'-'}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">거래처 데이터 없음</td></tr>';
   return head('🏢 거래처 분석','거래처별 매출·수금·미수·진행수주 · 행 클릭 → 상세','')
-    +`<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">거래처</th><th>누적 매출</th><th>수금</th><th>미수</th><th>진행 수주</th><th class="l">최근 매출일</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    +`<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">거래처</th><th>누적 매출</th><th>수금</th><th>미수</th><th>진행 수주</th><th>최근 6개월</th><th class="l">최근 매출일</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function openClient(name){
   const sales=(D.sales||[]).filter(s=>s.client===name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -602,6 +635,12 @@ function vInv(){
   const mRows=mv.length?mv.map(m=>`<tr onclick="mMove('${m.id}')"><td class="l">${m.date}</td><td class="l">${m.type==='입고'?'<span class="chip c-green">입고</span>':'<span class="chip c-amber">출고</span>'}</td><td class="l"><b style="color:var(--ink)">${esc(m.item)}</b></td><td>${(+m.qty||0).toLocaleString()}</td><td class="l muted">${esc(m.ref||'')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">입출고 이력 없음</td></tr>';
   return head('📦 물류 · 재고','현재고 = 기초 + 입고 − 출고 자동 계산',
     `<button class="btn" onclick="mItem()">+ 품목</button><button class="btn btn-primary" onclick="mMove()">+ 입출고</button>`)
+    +(()=>{const low=(D.items||[]).filter(i=>itemQty(i.name)<(+i.safety||0));const cm=curYm();let inM=0,outM=0;(D.moves||[]).forEach(m=>{if(ym(m.date)===cm){if(m.type==='입고')inM+=+m.qty||0;else outM+=+m.qty||0;}});
+      return `<div class="grid kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="kpi"><div class="v">${(D.items||[]).length}</div><div class="l">등록 품목</div></div>
+      <div class="kpi"><div class="v" style="color:${low.length?'var(--bad)':'var(--ink)'}">${low.length}</div><div class="l">안전재고 미달</div></div>
+      <div class="kpi"><div class="v" style="color:var(--ok)">+${inM.toLocaleString()}</div><div class="l">이번달 입고</div></div>
+      <div class="kpi"><div class="v" style="color:var(--warn)">-${outM.toLocaleString()}</div><div class="l">이번달 출고</div></div></div>`;})()
     +`<div class="grid" style="grid-template-columns:1fr 1.15fr">
       <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 16px 4px"><span>📦 품목별 재고</span></div><table><thead><tr><th class="l">품목</th><th>현재고</th><th>안전</th><th class="l">위치</th><th class="l">상태</th></tr></thead><tbody>${iRows}</tbody></table></div>
       <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 16px 4px"><span>🚚 입출고 이력</span></div><table><thead><tr><th class="l">날짜</th><th class="l">구분</th><th class="l">품목</th><th>수량</th><th class="l">참조</th></tr></thead><tbody>${mRows}</tbody></table></div></div></div>`;
@@ -649,6 +688,11 @@ function vFunds(){
     `<button class="btn btn-primary" onclick="mFund()">+ 입출금</button>`)
     +`<div class="grid kpis" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
       <div class="kpi"><div class="v" style="color:${fundsBal()<0?'var(--bad)':'var(--ink)'}">${fm(fundsBal())}</div><div class="l">총 잔액</div><div class="s">${fkrw(fundsBal())}</div></div>${accCards}</div>
+    ${(()=>{const yr2=curYr();const im={},om={};(D.funds||[]).forEach(f=>{const d=String(f.date||'');if(d.slice(0,4)!==yr2)return;const k=+d.slice(5,7);if(f.kind==='입금')im[k]=(im[k]||0)+(+f.amt||0);else om[k]=(om[k]||0)+(+f.amt||0);});
+      const mx2=Math.max(1,...Array.from({length:12},(_,i)=>Math.max(im[i+1]||0,om[i+1]||0)));
+      return `<div class="card" style="margin-bottom:14px"><div class="sect"><span>📊 월별 입출금 (${yr2})</span><span class="muted" style="font-size:11.5px">${jt('진=입금 · 연=출금','dark = in · light = out')}</span></div>
+      <div class="combo">${Array.from({length:12},(_,i)=>{const m=i+1,iv=im[m]||0,ov=om[m]||0;
+        return `<div class="mcol"><div class="bars"><div class="b1" style="height:${iv/mx2*100}%;background:var(--ok)" title="${m}월 입금 ${fm(iv)}"></div><div class="b2" style="height:${ov/mx2*100}%;background:#e3a5a5" title="${m}월 출금 ${fm(ov)}"></div></div><div class="ml">${m}월</div></div>`;}).join('')}</div></div>`;})()}
     <div class="card" style="margin-bottom:14px;display:flex;gap:26px"><div><div class="muted" style="font-size:12px">${fFundYm||'전체'} 입금</div><div style="font-size:20px;font-weight:800;color:var(--ok)">+${fm(inn)}</div></div><div><div class="muted" style="font-size:12px">출금</div><div style="font-size:20px;font-weight:800;color:var(--bad)">-${fm(out)}</div></div><div><div class="muted" style="font-size:12px">순증감</div><div style="font-size:20px;font-weight:800;color:${inn-out<0?'var(--bad)':'var(--ok)'}">${inn-out>=0?'+':''}${fm(inn-out)}</div></div></div>
     <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">날짜</th><th class="l">구분</th><th class="l">계좌</th><th class="l">항목</th><th>금액(${CUR})</th><th class="l">메모</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
@@ -811,6 +855,13 @@ function vActs(){
     <td>${a.next&&!a.doneNext?`<button class="btn btn-sm" onclick="event.stopPropagation();doneAct('${a.id}')">✓ 완료</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="6" class="empty">활동 기록이 없습니다</td></tr>';
   return head('📞 활동 기록','콜·미팅·방문 이력 + 후속조치 관리'+(fuAll.length?` · <span style="color:var(--bad)">후속 지연 ${fuAll.length}건</span>`:''),
     `<select class="sel" onchange="fActClient=this.value;render()"><option value="">고객사 전체</option>${clients.map(c=>`<option ${fActClient===c?'selected':''}>${esc(c)}</option>`).join('')}</select><button class="btn btn-primary" onclick="mAct()">+ 활동 등록</button>`)
+    +(()=>{const cm=curYm();const wk=new Date();wk.setDate(wk.getDate()+7);const wkS=wk.toISOString().slice(0,10);
+      const up=(D.acts||[]).filter(a=>a.nextDate&&!a.doneNext&&a.nextDate>=today()&&a.nextDate<=wkS);
+      const mAct2=(D.acts||[]).filter(a=>ym(a.date)===cm).length;
+      return `<div class="grid kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="kpi"><div class="v">${mAct2}</div><div class="l">이번달 활동</div></div>
+      <div class="kpi"><div class="v" style="color:${up.length?'var(--brand)':'var(--ink)'}">${up.length}</div><div class="l">이번주 예정 후속</div></div>
+      <div class="kpi"><div class="v" style="color:${fuAll.length?'var(--bad)':'var(--ink)'}">${fuAll.length}</div><div class="l">지연 후속</div></div></div>`;})()
     +`<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">날짜</th><th class="l">유형</th><th class="l">고객사</th><th class="l">내용</th><th class="l">후속 조치</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function mAct(id,preClient){const a=id?(D.acts||[]).find(x=>x.id===id):{date:today(),type:'콜',client:preClient||'',content:'',next:'',nextDate:''};
