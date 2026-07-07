@@ -165,6 +165,7 @@ tbody tr{cursor:pointer}tbody tr:hover td{background:#f8f9ff}
   <div id="mob-ov" onclick="toggleSidebar()"></div>
   <aside id="sidebar">
     <div class="brand"><div class="lg">🇺🇸</div><div><b>미국법인</b><small>WONTECH USA</small></div></div>
+    <div style="padding:10px 12px 0"><button onclick="openSearch()" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px 11px;color:#94a3b8;font-size:12.5px;text-align:left;display:flex;align-items:center;gap:8px;cursor:pointer"><i class="bi bi-search"></i><span class="lbl">검색</span><span class="lbl" style="margin-left:auto;font-size:10px;opacity:.55">Ctrl K</span></button></div>
     <nav class="nav" id="nav">
       <div class="grp">경영 요약</div>
       <a class="active" data-v="dash"><span class="ico">📈</span><span class="lbl">임원 대시보드</span></a>
@@ -1247,12 +1248,34 @@ async function seedSample(save){
   if(save)await saveAll('샘플 데이터 저장됨');
 }
 
-// 편의: ESC 닫기 · Enter 저장(입력창 한정)
+// ── 전역 검색 ──
+function openSearch(){closeSidebar();
+  document.getElementById('modal').innerHTML='<div class="mh" style="gap:8px"><i class="bi bi-search" style="color:var(--muted)"></i><input id="gq" placeholder="'+jt('거래처·딜·활동·매출 검색','Search clients, deals, activities…')+'" oninput="gSearch()" onkeydown="if(event.key===\'Enter\'){var f=document.querySelector(\'#gres [data-go]\');if(f)f.click();}" style="border:0;font-size:15.5px;flex:1;outline:none;background:transparent;color:var(--ink)"><button class="x" onclick="closeM()">×</button></div><div class="mb" id="gres" style="min-height:120px;max-height:60vh;overflow:auto"><div class="empty">'+jt('검색어를 입력하세요','Type to search')+'</div></div>';
+  document.getElementById('mbg').style.display='flex';
+  setTimeout(function(){var g=document.getElementById('gq');if(g)g.focus();},60);}
+function _srow(ic,title,sub,go){return '<div data-go="1" onclick="'+go+'" style="display:flex;gap:10px;align-items:center;padding:8px 7px;border-radius:8px;cursor:pointer" onmouseover="this.style.background=\'#f4f6fb\'" onmouseout="this.style.background=\'\'"><span>'+ic+'</span><div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--ink);font-size:13px">'+esc(title)+'</div>'+(sub?'<div class="muted" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sub)+'</div>':'')+'</div><i class="bi bi-arrow-return-left" style="color:#cbd5e1;font-size:11px"></i></div>';}
+function _sgrp(t,rows){return '<div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 3px">'+t+'</div>'+rows.join('');}
+function gSearch(){
+  var q=(document.getElementById('gq').value||'').trim().toLowerCase();var res=document.getElementById('gres');
+  if(!q){res.innerHTML='<div class="empty">'+jt('검색어를 입력하세요','Type to search')+'</div>';return;}
+  var out='',esq=function(c){return esc(c).replace(/'/g,"&#39;");};
+  var cls=clientList().filter(function(c){return c.toLowerCase().indexOf(q)>=0;}).slice(0,6);
+  if(cls.length)out+=_sgrp(jt('거래처','Clients'),cls.map(function(c){return _srow('🏢',c,'',"openClient('"+esq(c)+"');closeM()");}));
+  var dl=(D.deals||[]).filter(function(d){return ((d.client||'')+' '+(d.product||'')).toLowerCase().indexOf(q)>=0;}).slice(0,6);
+  if(dl.length)out+=_sgrp(jt('딜','Deals'),dl.map(function(d){return _srow('🎯',d.client,(d.product||'')+' · '+fm(d.amt)+' · '+jt(d.stage,EN[d.stage]||d.stage),"openDeal('"+d.id+"');closeM()");}));
+  var sl=(D.sales||[]).filter(function(s){return ((s.client||'')+' '+(s.product||'')).toLowerCase().indexOf(q)>=0;}).slice(0,5);
+  if(sl.length)out+=_sgrp(jt('매출','Sales'),sl.map(function(s){return _srow('🧾',s.client,s.date+' · '+(s.product||'')+' · '+fm(s.amt),"dwSale('"+s.id+"');closeM()");}));
+  var ac=(D.acts||[]).filter(function(a){return ((a.client||'')+' '+(a.content||'')+' '+(a.next||'')).toLowerCase().indexOf(q)>=0;}).slice(0,5);
+  if(ac.length)out+=_sgrp(jt('활동','Activities'),ac.map(function(a){return _srow('📞',a.client,a.date+' · '+(a.content||''),"setView('acts');closeM()");}));
+  res.innerHTML=out||'<div class="empty">'+jt('결과 없음','No results')+'</div>';
+}
+// 편의: ESC 닫기 · Enter 저장(입력창 한정) · Ctrl/⌘+K 검색
 document.addEventListener('keydown',function(e){
   var modalOpen=document.getElementById('mbg').style.display==='flex';
   var dwOpen=document.getElementById('dw').classList.contains('open');
+  if((e.key==='k'||e.key==='K')&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); if(document.getElementById('app').style.display!=='none')openSearch(); return; }
   if(e.key==='Escape'){ if(modalOpen)closeM(); else if(dwOpen)closeDw(); }
-  else if(e.key==='Enter'&&modalOpen&&e.target&&e.target.tagName==='INPUT'&&e.target.type!=='checkbox'){ e.preventDefault(); saveM(); }
+  else if(e.key==='Enter'&&modalOpen&&e.target&&e.target.tagName==='INPUT'&&e.target.type!=='checkbox'&&e.target.id!=='gq'){ e.preventDefault(); saveM(); }
 });
 boot();
 </script>
