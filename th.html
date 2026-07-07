@@ -170,6 +170,13 @@ async function boot(){const{data}=await _sb.auth.getSession();
   else location.href=CENTRAL;}
 async function enter(user){ME=user.email||'';
   document.getElementById('uem').textContent=ME;document.getElementById('unm').textContent=ME.split('@')[0]||'사용자';document.getElementById('uav').textContent=(ME[0]||'P').toUpperCase();
+  // 접근 게이트: 태국법인(th) 권한자 · 전체관리자(admin) · 소유자(master)만
+  if(ME!=='pmw0406@gmail.com'){
+    try{const{data:p}=await _sb.from('crm_profiles').select('role,access').eq('id',user.id).maybeSingle();
+      const ok=p&&(p.role==='admin'||(p.access||'').split(',').map(function(s){return s.trim();}).indexOf('th')>=0);
+      if(!ok){location.href=CENTRAL;return;}
+    }catch(e){location.href=CENTRAL;return;}
+  }
   const{data}=await _sb.from('cons_cache').select('data').eq('key',KEY).maybeSingle();
   D=Object.assign(blank(),(data&&data.data)||{});
   migrate(); ready();}
