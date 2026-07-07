@@ -209,16 +209,28 @@ const DEAL_OPEN=['리드','상담중','견적발송','협의중'];
 const ACT_T={'콜':'c-blue','미팅':'c-violet','이메일':'c-gray','방문':'c-green'};
 const GRADE_C={'A':'c-red','B':'c-amber','C':'c-gray'};
 let ME='',curView='dash',D=null,LOCAL=false;
+let _role='',_access='',_canPerf=false;
+async function loadPerm(uid){
+  if(ME==='pmw0406@gmail.com'){_canPerf=true;return;}   // 소유자(master)
+  try{const{data}=await _sb.from('crm_profiles').select('role,access').eq('id',uid).maybeSingle();
+    if(data){_role=data.role||'';_access=(data.access||'');
+      var acc=_access.split(',').map(function(x){return x.trim();});
+      // 영업성과 = 전체 관리자 OR (미국법인 팀장 = manager & access에 us)
+      _canPerf = (_role==='admin') || (_role==='manager' && acc.indexOf('us')>=0);
+    }}catch(e){_canPerf=false;}
+}
+function applyPerm(){var a=document.querySelector('#nav a[data-v="perf"]');if(a)a.style.display=_canPerf?'':'none';}
 const blank=()=>({v:3,rate:1350,targets:{},accounts:[{name:'주거래계좌',opening:0}],sales:[],orders:[],items:[],moves:[],funds:[],expenses:[],clients:[],deals:[],acts:[],tasks:[]});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.random().toString(16).slice(2);
 
 // ── 부트 ──
 async function boot(){const{data}=await _sb.auth.getSession();
   if(data&&data.session)await enter(data.session.user);
-  else if(location.hostname==='localhost'||location.hostname==='127.0.0.1'){LOCAL=true;ME='dev@local';D=blank();seedSample(false);ready();}
+  else if(location.hostname==='localhost'||location.hostname==='127.0.0.1'){LOCAL=true;ME='dev@local';_canPerf=true;D=blank();seedSample(false);ready();}
   else location.href=CENTRAL;}
 async function enter(user){ME=user.email||'';
   document.getElementById('uem').textContent=ME;document.getElementById('unm').textContent=ME.split('@')[0]||'사용자';document.getElementById('uav').textContent=(ME[0]||'P').toUpperCase();
+  await loadPerm(user.id);
   const{data}=await _sb.from('cons_cache').select('data').eq('key',KEY).maybeSingle();
   D=Object.assign(blank(),(data&&data.data)||{});
   migrate(); ready();}
@@ -228,7 +240,7 @@ function migrate(){ // v1 → v2: sales에 collections 없으면 빈배열, targ
   if(!D.accounts||!D.accounts.length)D.accounts=[{name:'주거래계좌',opening:0}];
   if(!D.clients)D.clients=[];if(!D.deals)D.deals=[];if(!D.acts)D.acts=[];if(!D.tasks)D.tasks=[];
 }
-function ready(){document.getElementById('boot-ov').style.display='none';document.getElementById('app').style.display='block';var iv=(location.hash||'').replace('#','');if(VIEWS_KEYS.indexOf(iv)>=0){curView=iv;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===iv));}render();}
+function ready(){document.getElementById('boot-ov').style.display='none';document.getElementById('app').style.display='block';applyPerm();var iv=(location.hash||'').replace('#','');if(iv==='perf'&&!_canPerf)iv='dash';if(VIEWS_KEYS.indexOf(iv)>=0){curView=iv;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===iv));}render();}
 async function saveAll(msg){
   if(LOCAL){render();toast(msg||'저장됨 (로컬 테스트)');return true;}
   const{error}=await _sb.from('cons_cache').upsert({key:KEY,data:D});
@@ -382,7 +394,7 @@ const VIEWS_KEYS=['dash','report','perf','sched','pipe','accounts','acts','sales
 function setView(v,noPush){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);if(!noPush){try{history.pushState({v:v},'','#'+v);}catch(e){}}}
 window.addEventListener('popstate',function(){var v=(location.hash||'').replace('#','');setView(VIEWS_KEYS.indexOf(v)>=0?v:'dash',true);});
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>setView(a.dataset.v)));
-function render(){const f={dash:vDash,report:vReport,perf:vPerf,sched:vSched,pipe:vPipe,accounts:vAccounts,acts:vActs,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,funds:vFunds}[curView];document.getElementById('view').innerHTML=f();if(curView==='pipe')bindKb();applyLang();applyUserTr();}
+function render(){if(curView==='perf'&&!_canPerf)curView='dash';const f={dash:vDash,report:vReport,perf:vPerf,sched:vSched,pipe:vPipe,accounts:vAccounts,acts:vActs,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,funds:vFunds}[curView];document.getElementById('view').innerHTML=f();if(curView==='pipe')bindKb();applyLang();applyUserTr();}
 function head(t,d,acts){return `<div class="topbar"><div><h2>${t}</h2><div class="desc">${d}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${acts||''}</div></div><div class="wrap">`;}
 function isEmpty(){return !(D.sales||[]).length&&!(D.orders||[]).length&&!(D.funds||[]).length&&!(D.items||[]).length;}
 
