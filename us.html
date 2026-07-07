@@ -457,7 +457,7 @@ function vDash(){
   // 월별 콤보(매출 vs 수금 + 목표선)
   const mx=Math.max(1,...Array.from({length:12},(_,i)=>Math.max(sm[i+1]||0,pm[i+1]||0,tm[i+1]||0)));
   const combo=Array.from({length:12},(_,i)=>{const m=i+1,sv=sm[m]||0,pv=pm[m]||0,tv=tm[m]||0;
-    return `<div class="mcol"><div class="bars">${tv?`<div class="tgt" style="bottom:${tv/mx*100}%"></div>`:''}
+    return `<div class="mcol" style="cursor:pointer" onclick="repMode='month';repAnchor='${yr}-${String(m).padStart(2,'0')}';setView('report')" title="${jt('클릭 → 이 달 리포트','Click → month report')}"><div class="bars">${tv?`<div class="tgt" style="bottom:${tv/mx*100}%"></div>`:''}
       <div class="b1" style="height:${sv/mx*100}%" title="${m}월 매출 ${fm(sv)}"></div>
       <div class="b2" style="height:${pv/mx*100}%" title="${m}월 수금 ${fm(pv)}"></div></div>
       <div class="mv">${sv?fmS(sv):''}</div><div class="ml">${m}월</div></div>`;}).join('');
@@ -509,7 +509,7 @@ function vDash(){
         ${itemsN?(D.items||[]).map(i=>{const q=itemQty(i.name);const sf=+i.safety||0;const lo=q<sf;const ratio=sf?Math.min(100,q/sf*100):100;
           return `<div style="padding:6px 0"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><b style="color:var(--ink)">${trUser(i.name)}</b><span style="font-weight:700;color:${lo?'var(--bad)':'var(--body)'}">${q}${trUser(i.unit)}${lo?' ⚠':''}</span></div><div class="bar" style="background:#f1f5f9"><i style="width:${ratio}%;background:${lo?'var(--bad)':'#22c55e'}"></i></div><div style="font-size:10px;color:var(--muted);margin-top:2px">${jt('안전재고','safety')} ${sf}${trUser(i.unit)}</div></div>`;}).join(''):`<div class="empty">${jt('등록된 품목 없음','No items')}</div>`}</div>
       <div><div class="sect"><span>📊 ${jt('제품 Top5 (연간 매출)','Top 5 Products (YTD)')}</span></div>
-        ${topPr.length?topPr.map(([p,v])=>`<div style="display:flex;align-items:center;gap:9px;padding:5px 0"><div style="width:130px;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p)}</div><div class="bar" style="flex:1"><i style="width:${v/maxPr*100}%"></i></div><div style="width:76px;text-align:right;font-size:11.5px;font-weight:700">${fmS(v)}</div></div>`).join(''):'<div class="empty">'+jt('매출 데이터 없음','No sales data')+'</div>'}</div>
+        ${topPr.length?topPr.map(([p,v])=>`<div onclick="openProduct('${esc(p).replace(/'/g,'&#39;')}')" style="display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer"><div style="width:130px;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dotted #cbd5e1">${esc(p)}</div><div class="bar" style="flex:1"><i style="width:${v/maxPr*100}%"></i></div><div style="width:76px;text-align:right;font-size:11.5px;font-weight:700">${fmS(v)}</div></div>`).join(''):'<div class="empty">'+jt('매출 데이터 없음','No sales data')+'</div>'}</div>
   </div></div>
   <div class="card" style="margin-bottom:14px"><div class="sect"><span>📊 월별 매출 vs 수금 <span class="muted" style="font-weight:500;font-size:11.5px">막대=매출(진), 수금(연) · 점선=목표</span></span><span class="muted" style="font-size:12px">${yr}년</span></div><div class="combo">${combo}</div></div>
     <div class="card" style="margin-bottom:14px"><div class="sect"><span>🎯 딜 파이프라인 <span class="muted" style="font-weight:500;font-size:11.5px">CRM · 클릭 → 칸반</span></span><span class="muted" style="font-size:12px;cursor:pointer" onclick="setView('pipe')">전체 →</span></div>
@@ -679,6 +679,33 @@ function vClients(){
     <td>${v.out?`<b style="color:var(--bad)">${fm(v.out)}</b>`:'-'}</td><td>${v.ord?fm(v.ord):'-'}</td><td>${(()=>{const mx=Math.max(1,...spark6.map(k=>v.m&&v.m[k]||0));return '<div style="display:flex;gap:2px;align-items:flex-end;height:22px;justify-content:flex-end">'+spark6.map(k=>{const h=(v.m&&v.m[k]||0)/mx*100;return '<div title="'+k+'" style="width:6px;background:'+(h?'var(--brand)':'#e8ebf0')+';height:'+Math.max(8,h)+'%;border-radius:2px"></div>';}).join('')+'</div>';})()}</td><td class="l muted">${v.last||'-'}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">거래처 데이터 없음</td></tr>';
   return head('🏢 거래처 분석','거래처별 매출·수금·미수·진행수주 · 행 클릭 → 상세','')
     +`<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">거래처</th><th>누적 매출</th><th>수금</th><th>미수</th><th>진행 수주</th><th>최근 6개월</th><th class="l">최근 매출일</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+function openProduct(name){
+  var sales=(D.sales||[]).filter(function(s){return s.product===name;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var orders=(D.orders||[]).filter(function(o){return o.product===name;});
+  var deals=(D.deals||[]).filter(function(d){return d.product===name;});
+  var rev=sales.reduce(function(a,s){return a+(+s.amt||0);},0);
+  var qty=sales.reduce(function(a,s){return a+(+s.qty||0);},0);
+  var openD=deals.filter(function(d){return DEAL_OPEN.indexOf(d.stage)>=0;});
+  var openBack=orders.filter(function(o){return o.status!=='납품완료'&&o.status!=='취소';}).reduce(function(a,o){return a+(+o.amt||0);},0);
+  // 월별 추이 (최근 6개월)
+  var months=[];var now=new Date(today());for(var i=5;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(d.toISOString().slice(0,7));}
+  var mm={};sales.forEach(function(s){var k=ym(s.date);if(months.indexOf(k)>=0)mm[k]=(mm[k]||0)+(+s.amt||0);});
+  var mmx=Math.max(1,...months.map(function(k){return mm[k]||0;}));
+  var spark='<div style="display:flex;gap:4px;align-items:flex-end;height:44px;margin-top:6px">'+months.map(function(k){var h=(mm[k]||0)/mmx*100;return '<div style="flex:1;text-align:center"><div style="height:40px;display:flex;align-items:flex-end"><div title="'+k+': '+fm(mm[k]||0)+'" style="width:100%;background:'+(h?'var(--brand)':'#eef1f5')+';height:'+Math.max(4,h)+'%;border-radius:3px 3px 0 0"></div></div><div style="font-size:9px;color:var(--muted);margin-top:2px">'+(+k.slice(5))+'</div></div>';}).join('')+'</div>';
+  var byCl={};sales.forEach(function(s){byCl[s.client]=(byCl[s.client]||0)+(+s.amt||0);});
+  var clArr=Object.entries(byCl).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
+  var sHtml=sales.length?sales.slice(0,12).map(function(s){return `<div onclick="closeDw();dwSale('${s.id}')" style="display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="muted">${s.date}</span><span style="flex:1">${esc(s.client)}</span><b>${fm(s.amt)}</b>${outAmt(s)>0?`<span class="chip c-red">${jt('미수','AR')}</span>`:''}</div>`;}).join(''):'<div class="empty">'+jt('매출 없음','No sales')+'</div>';
+  openDw(jt('제품','Product'), name,
+    `<div class="dwcard"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px;text-align:center">
+      <div><div class="muted" style="font-size:11px">${jt('누적 매출','Total Revenue')}</div><b style="font-size:16px">${fm(rev)}</b></div>
+      <div><div class="muted" style="font-size:11px">${jt('판매 수량','Units Sold')}</div><b style="font-size:16px">${qty.toLocaleString()}</b></div>
+      <div><div class="muted" style="font-size:11px">${jt('매출 건수','Deals')}</div><b style="font-size:16px">${sales.length}</b></div></div>
+      <div style="margin-top:6px"><div class="muted" style="font-size:11px">${jt('최근 6개월 매출 추이','Last 6 months')}</div>${spark}</div></div>
+    <div class="dwcard"><div class="sect"><span>🎯 ${jt('파이프라인·수주','Pipeline & Orders')}</span></div>
+      <div style="display:flex;gap:20px;font-size:13px"><div><div class="muted" style="font-size:11px">${jt('진행 딜','Open deals')}</div><b>${openD.length} · ${fmS(openD.reduce(function(a,d){return a+(+d.amt||0);},0))}</b></div><div><div class="muted" style="font-size:11px">${jt('수주 잔고','Order backlog')}</div><b>${fm(openBack)}</b></div></div></div>
+    ${clArr.length?`<div class="dwcard"><div class="sect"><span>🏢 ${jt('주요 거래처','Top Clients')}</span></div>${clArr.map(function(x){return `<div onclick="openClient('${esc(x[0]).replace(/'/g,'&#39;')}')" style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span>${esc(x[0])}</span><b>${fm(x[1])}</b></div>`;}).join('')}</div>`:''}
+    <div class="dwcard"><div class="sect"><span>🧾 ${jt('매출 이력','Sales History')}</span></div>${sHtml}</div>`);
 }
 function openClient(name){
   const sales=(D.sales||[]).filter(s=>s.client===name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -1051,7 +1078,7 @@ function vReport(){
         <div class="kpi"><div class="v">${actsM.length}</div><div class="l">${jt('영업 활동','Activities')}</div></div>
       </div>
       <div class="grid dash2col" style="grid-template-columns:1fr 1fr">
-        <div class="card"><div class="sect"><span>📦 ${jt('제품별 매출','Revenue by Product')}</span></div>${prArr.length?prArr.map(function(x){return `<div style="display:flex;align-items:center;gap:9px;padding:5px 0"><div style="width:130px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x[0])}</div><div class="bar" style="flex:1"><i style="width:${x[1]/maxPr*100}%"></i></div><div style="width:80px;text-align:right;font-size:12px;font-weight:700">${fm(x[1])}</div></div>`;}).join(''):'<div class="empty">'+jt('해당 기간 매출 없음','No sales in period')+'</div>'}</div>
+        <div class="card"><div class="sect"><span>📦 ${jt('제품별 매출','Revenue by Product')}</span></div>${prArr.length?prArr.map(function(x){return `<div onclick="openProduct('${esc(x[0]).replace(/'/g,'&#39;')}')" style="display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer"><div style="width:130px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dotted #cbd5e1">${esc(x[0])}</div><div class="bar" style="flex:1"><i style="width:${x[1]/maxPr*100}%"></i></div><div style="width:80px;text-align:right;font-size:12px;font-weight:700">${fm(x[1])}</div></div>`;}).join(''):'<div class="empty">'+jt('해당 기간 매출 없음','No sales in period')+'</div>'}</div>
         <div class="card"><div class="sect"><span>🏢 ${jt('거래처별 매출','Revenue by Client')}</span></div>${clArr.length?clArr.map(function(x){return `<div onclick="openClient('${esc(x[0]).replace(/'/g,'&#39;')}')" style="display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer"><div style="width:150px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x[0])}</div><div class="bar" style="flex:1"><i style="width:${x[1]/maxCl*100}%"></i></div><div style="width:80px;text-align:right;font-size:12px;font-weight:700">${fm(x[1])}</div></div>`;}).join(''):'<div class="empty">'+jt('해당 기간 매출 없음','No sales in period')+'</div>'}</div>
       </div></div>`;
 }
