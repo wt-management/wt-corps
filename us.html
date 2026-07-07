@@ -1305,7 +1305,7 @@ function mClient(id){const c=id?(D.clients||[]).find(x=>x.id===id):{name:'',cont
     <div class="fld"><label>${jt('상세 주소','Full address')}</label><input id="f-address" value="${esc(c.address||'')}" placeholder="${jt('검색 후 자동입력 / 직접 입력','auto-filled or type manually')}"></div>
     <input type="hidden" id="f-lat" value="${esc(c.lat||'')}"><input type="hidden" id="f-lng" value="${esc(c.lng||'')}">
     <div class="fr"><div class="fld"><label>등급</label><select id="f-grade">${['A','B','C'].map(g=>`<option ${c.grade===g?'selected':''}>${g}</option>`).join('')}</select></div><div class="fld"><label>상태</label><select id="f-status">${['활성','잠재','휴면'].map(x=>`<option ${c.status===x?'selected':''}>${x}</option>`).join('')}</select></div></div>
-    <div class="fld"><label>메모</label><input id="f-memo" value="${esc(c.memo||'')}"></div>`,
+    <div class="fld"><label>메모</label><textarea id="f-memo" rows="4" style="min-height:96px;resize:vertical">${esc(c.memo||'')}</textarea></div>`,
     async()=>{const g=x=>document.getElementById(x).value;const rec={id:id||uid(),name:g('f-name').trim(),contact:g('f-contact').trim(),phone:g('f-phone').trim(),email:g('f-email').trim(),region:g('f-region').trim(),address:g('f-address').trim(),lat:g('f-lat'),lng:g('f-lng'),grade:g('f-grade'),status:g('f-status'),memo:g('f-memo').trim()};
       if(!rec.name){toast('고객사명을 입력하세요');return false;}
       const i=(D.clients||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.clients[i]=Object.assign({},D.clients[i],rec);else D.clients.push(rec);return await saveAll();},
