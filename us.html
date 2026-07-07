@@ -170,7 +170,6 @@ tbody tr{cursor:pointer}tbody tr:hover td{background:#f8f9ff}
     <nav class="nav" id="nav">
       <div class="grp">경영 요약</div>
       <a class="active" data-v="dash"><span class="ico">📈</span><span class="lbl">임원 대시보드</span></a>
-      <a data-v="hq"><span class="ico">🏢</span><span class="lbl">본사 관리</span></a>
       <a data-v="report"><span class="ico">📋</span><span class="lbl">월간 리포트</span></a>
       <a data-v="sched"><span class="ico">📅</span><span class="lbl">일정 · 할일</span></a>
       <div class="grp">CRM 영업</div>
@@ -410,7 +409,7 @@ function fundsBal(){return (D.accounts||[]).reduce((a,x)=>a+fundsBalAcc(x.name),
 function itemQty(name){const it=(D.items||[]).find(i=>i.name===name);let q=it?(+it.qty0||0):0;(D.moves||[]).forEach(m=>{if(m.item===name)q+=(m.type==='입고'?1:-1)*(+m.qty||0);});return q;}
 
 // ── 라우팅 ──
-const VIEWS_KEYS=['dash','hq','report','perf','sched','pipe','accounts','acts','sales','ar','orders','clients','inv','funds'];
+const VIEWS_KEYS=['dash','report','perf','sched','pipe','accounts','acts','sales','ar','orders','clients','inv','funds'];
 function setView(v,noPush){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);if(!noPush){try{history.pushState({v:v},'','#'+v);}catch(e){}}}
 window.addEventListener('popstate',function(){var v=(location.hash||'').replace('#','');setView(VIEWS_KEYS.indexOf(v)>=0?v:'dash',true);});
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('mob-ov').classList.toggle('show');}
