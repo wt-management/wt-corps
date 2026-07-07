@@ -773,7 +773,10 @@ function mMove(id){const m=id?(D.moves||[]).find(x=>x.id===id):{date:today(),typ
     <div class="fr"><div class="fld"><label>품목</label><select id="f-item">${opts}</select></div><div class="fld"><label>수량</label><input id="f-qty" type="number" value="${m.qty||''}"></div></div>
     <div class="fld"><label>참조 (선적/거래처)</label><input id="f-ref" value="${esc(m.ref||'')}"></div>`,
     async()=>{const g=x=>document.getElementById(x).value;const rec={id:id||uid(),date:g('f-date'),type:g('f-type'),item:g('f-item'),qty:Number(g('f-qty'))||0,ref:g('f-ref').trim()};
-      if(!rec.item){toast('품목을 선택하세요');return false;}
+      if(!rec.item){toast(jt('품목을 선택하세요','Select an item'));return false;}
+      if(!rec.qty){toast(jt('수량을 입력하세요','Enter quantity'));return false;}
+      if(rec.type==='출고'){var curQ=itemQty(rec.item)+(id&&m.type==='출고'&&m.item===rec.item?(+m.qty||0):0);
+        if(curQ-rec.qty<0){if(!confirm(jt('현재고가 '+curQ+'개인데 '+rec.qty+'개 출고하면 재고가 '+(curQ-rec.qty)+'개(마이너스)가 됩니다. 그래도 등록할까요?','Current stock is '+curQ+', shipping '+rec.qty+' makes it '+(curQ-rec.qty)+' (negative). Proceed anyway?')))return false;}}
       const i=(D.moves||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.moves[i]=rec;else D.moves.push(rec);return await saveAll();},
     id?async()=>{D.moves=D.moves.filter(x=>x.id!==id);await saveAll('삭제됨');}:null);
 }
