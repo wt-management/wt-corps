@@ -194,7 +194,6 @@ tbody tr{cursor:pointer}tbody tr:hover td{background:#f8f9ff}
   <div id="mob-ov" onclick="toggleSidebar()"></div>
   <aside id="sidebar">
     <div class="brand"><div class="lg">🇺🇸</div><div><b>미국법인</b><small>WONTECH USA</small></div></div>
-    <div style="padding:10px 12px 0"><button onclick="openSearch()" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px 11px;color:#94a3b8;font-size:12.5px;text-align:left;display:flex;align-items:center;gap:8px;cursor:pointer"><i class="bi bi-search"></i><span class="lbl">검색</span><span class="lbl" style="margin-left:auto;font-size:10px;opacity:.55">Ctrl K</span></button></div>
     <nav class="nav" id="nav">
       <div class="grp">경영 요약</div>
       <a class="active" data-v="dash"><span class="ico">📈</span><span class="lbl">대시보드</span></a>
@@ -221,6 +220,7 @@ tbody tr{cursor:pointer}tbody tr:hover td{background:#f8f9ff}
     </div>
     <div class="acct"><div class="row"><div class="av" id="uav">P</div><div style="flex:1;min-width:0"><div class="nm" id="unm">-</div><div class="em" id="uem">-</div></div></div>
       <div class="btns"><button onclick="changePw()"><i class="bi bi-key"></i> 비밀번호</button><button onclick="doLogout()"><i class="bi bi-box-arrow-right"></i> 로그아웃</button></div></div>
+    <div style="padding:4px 12px 6px"><button onclick="openSearch()" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px 11px;color:#94a3b8;font-size:12.5px;text-align:left;display:flex;align-items:center;gap:8px;cursor:pointer"><i class="bi bi-search"></i><span class="lbl">검색</span><span class="lbl" style="margin-left:auto;font-size:10px;opacity:.55">Ctrl K</span></button></div>
     <div class="switch-wrap"><button class="switch-btn" onclick="document.getElementById('swdd').classList.toggle('open')"><i class="bi bi-grid-3x3-gap"></i><span style="flex:1;text-align:left;font-weight:600">사이트 이동</span><i class="bi bi-chevron-up" style="font-size:10px"></i></button>
       <div class="switch-dd" id="swdd">
         <div class="sw-item" onclick="goSite('https://wt-management.github.io/wontech/total.html')"><span class="sw-badge" style="background:#4f46e5">종합</span><span style="flex:1">전사 종합 경영현황</span></div>
@@ -1361,24 +1361,30 @@ function vActs(){
 function actTimeline(L){
   if(!L.length)return '<div class="card"><div class="empty">'+jt('활동 기록이 없습니다','No activities yet')+'</div></div>';
   L.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  var groups={};L.forEach(function(a){(groups[a.date||'?']=groups[a.date||'?']||[]).push(a);});
+  var days=Object.keys(groups).sort(function(a,b){return b.localeCompare(a);});
   var dn=['일','월','화','수','목','금','토'],dnE=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  return '<div class="card" style="padding:20px 22px 6px">'+L.map(function(a,i){
-    var col=ACT_COL[a.type]||'#64748b';
-    var late=a.nextDate&&a.nextDate<today()&&!a.doneNext;
-    var dt=new Date(a.date),wd=isNaN(dt)?'':jt(dn[dt.getDay()],dnE[dt.getDay()]);
-    var isToday=a.date===today();
-    return `<div style="display:flex;gap:14px">
-      <div style="display:flex;flex-direction:column;align-items:center;width:38px;flex-shrink:0">
-        <div style="width:38px;height:38px;border-radius:50%;background:${col}14;border:2px solid ${col};display:flex;align-items:center;justify-content:center;font-size:16px">${ACT_ICON[a.type]||'•'}</div>
-        ${i<L.length-1?'<div style="width:2px;flex:1;background:var(--line);margin:5px 0;min-height:14px"></div>':''}
-      </div>
-      <div onclick="mAct('${a.id}')" style="flex:1;padding-bottom:20px;cursor:pointer;max-width:720px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:3px">${a.date}${wd?' ('+wd+')':''}${isToday?' · <span style="color:var(--brand);font-weight:700">'+jt('오늘','today')+'</span>':''} · <b style="color:var(--body)">${esc(a.client)}</b> <span class="chip" style="background:${col}18;color:${col};font-size:10px">${jt(a.type,EN[a.type]||a.type)}</span>${a.serial?' <span class="muted" style="font-size:10px">🔖 '+esc(a.serial)+'</span>':''}</div>
-        <div style="font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.45">${trUser(a.content)||jt(a.type,EN[a.type]||a.type)}</div>
-        ${a.next?`<div style="margin-top:6px;display:flex;align-items:center;gap:7px;flex-wrap:wrap"><span style="font-size:11.5px;color:${late?'var(--bad)':a.doneNext?'var(--ok)':'var(--warn)'};background:${late?'#fee2e2':a.doneNext?'#dcfce7':'#fef3c7'};border-radius:6px;padding:3px 9px;font-weight:600">→ ${trUser(a.next)} · ${a.doneNext?jt('완료','done'):(late?jt('지연 ','overdue ')+a.nextDate:a.nextDate)}</span>${!a.doneNext?`<button class="btn btn-sm" style="padding:2px 9px;font-size:11px" onclick="event.stopPropagation();doneAct('${a.id}')">✓ ${jt('완료','done')}</button>`:''}</div>`:''}
-      </div>
-    </div>`;
-  }).join('')+'</div>';
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px;align-items:start">'
+    +days.map(function(d){
+      var dt=new Date(d),wd=isNaN(dt)?'':jt(dn[dt.getDay()],dnE[dt.getDay()]);
+      var isToday=d===today(),wend=!isNaN(dt)&&dt.getDay()===0;
+      var hd='<div style="padding:8px 11px;background:'+(isToday?'var(--brand)':'#f1f5f9')+';color:'+(isToday?'#fff':'var(--ink)')+';display:flex;align-items:baseline;gap:6px">'
+        +'<b style="font-size:13px">'+d.slice(5)+'</b>'
+        +'<span style="font-size:11px;color:'+(isToday?'rgba(255,255,255,.85)':(wend?'#dc2626':'var(--muted)'))+'">'+wd+'</span>'
+        +(isToday?'<span style="font-size:9.5px;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 6px;font-weight:700">'+jt('오늘','today')+'</span>':'')
+        +'<span style="margin-left:auto;font-size:11px;opacity:.7">'+groups[d].length+jt('건','')+'</span></div>';
+      return '<div class="card" style="padding:0;overflow:hidden">'+hd+'<div style="padding:9px 9px 2px">'+groups[d].map(_actDayCard).join('')+'</div></div>';
+    }).join('')+'</div>';
+}
+function _actDayCard(a){
+  var col=ACT_COL[a.type]||'#64748b';
+  var late=a.nextDate&&a.nextDate<today()&&!a.doneNext;
+  return '<div onclick="mAct(\''+a.id+'\')" style="border-left:3px solid '+col+';background:#f8fafc;border-radius:7px;padding:8px 10px;margin-bottom:8px;cursor:pointer">'
+    +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px"><span class="chip" style="background:'+col+'18;color:'+col+';font-size:10px">'+(ACT_ICON[a.type]||'')+' '+jt(a.type,EN[a.type]||a.type)+'</span><b style="font-size:12px;color:var(--ink)">'+esc(a.client)+'</b></div>'
+    +'<div style="font-size:12px;color:var(--body);line-height:1.42">'+(trUser(a.content)||'')+'</div>'
+    +(a.serial?'<div class="muted" style="font-size:10px;margin-top:2px">🔖 '+esc(a.serial)+'</div>':'')
+    +(a.next?'<div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:10.5px;color:'+(late?'var(--bad)':a.doneNext?'var(--ok)':'var(--warn)')+';background:'+(late?'#fee2e2':a.doneNext?'#dcfce7':'#fef3c7')+';border-radius:6px;padding:2px 7px;font-weight:600">→ '+trUser(a.next)+' · '+(a.doneNext?jt('완료','done'):(late?jt('지연','late'):a.nextDate))+'</span>'+(!a.doneNext?'<button class="btn btn-sm" style="padding:1px 7px;font-size:10.5px" onclick="event.stopPropagation();doneAct(\''+a.id+'\')">✓</button>':'')+'</div>':'')
+    +'</div>';
 }
 function actListView(L){
   L.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
