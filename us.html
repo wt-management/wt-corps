@@ -64,6 +64,7 @@ button{font-family:inherit;cursor:pointer}input,select,textarea{font-family:inhe
 .mcard .mval{font-size:23px;font-weight:800;color:var(--ink);line-height:1}
 .mcard .msub{font-size:11px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .mtag{display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:5px;font-size:10.5px;font-weight:700}
+.utr{opacity:.55}
 @media(max-width:1150px){.mcards{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:640px){.mcards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.dash2col{grid-template-columns:1fr!important}}
@@ -315,6 +316,40 @@ function setLang(l){L=l;localStorage.setItem('us_lang',l);render();}
 // ── 유틸 ──
 function toast(m){if(L==='en'){if(EN[m]!=null)m=EN[m];else{for(const k of EN_KEYS){if(m.indexOf(k)>=0)m=m.split(k).join(EN[k]);}}}const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
 function esc(s){return(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// ── 사용자 입력 자동 번역 (영↔한, MyMemory) ──
+var _trCache={};try{_trCache=JSON.parse(localStorage.getItem('us_trcache')||'{}');}catch(e){}
+function _trSave(){try{localStorage.setItem('us_trcache',JSON.stringify(_trCache));}catch(e){}}
+function trUser(t){
+  t=(t==null?'':String(t));
+  if(!t.trim())return esc(t);
+  var need = (typeof L!=='undefined'&&L==='ko') ? (/[A-Za-z]/.test(t)&&!/[\uac00-\ud7a3]/.test(t)) : (typeof L!=='undefined'&&L==='en' ? /[\uac00-\ud7a3]/.test(t) : false);
+  if(!need)return esc(t);
+  var key=L+'|'+t;
+  if(_trCache[key]!=null)return '<span title="'+esc(t)+'">'+esc(_trCache[key])+'</span>';
+  return '<span class="utr" data-k="'+esc(key)+'" data-s="'+esc(t)+'" title="'+esc(t)+'">'+esc(t)+'</span>';
+}
+var _trBusy=false;
+async function applyUserTr(){
+  var swap=function(){[].slice.call(document.querySelectorAll('.utr[data-k]')).forEach(function(e){var k=e.getAttribute('data-k');if(_trCache[k]!=null){e.textContent=_trCache[k];e.classList.remove('utr');}});};
+  swap();
+  if(_trBusy)return;
+  var els=[].slice.call(document.querySelectorAll('.utr[data-k]'));
+  var uniq={};els.forEach(function(e){var k=e.getAttribute('data-k');if(_trCache[k]==null)uniq[k]=e.getAttribute('data-s');});
+  var keys=Object.keys(uniq);if(!keys.length)return;
+  _trBusy=true;
+  var lp=(L==='ko')?'en|ko':'ko|en';
+  for(var i=0;i<keys.length;i++){
+    var srcTxt=uniq[keys[i]];
+    try{
+      var r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(srcTxt)+'&langpair='+lp);
+      var j=await r.json();
+      var tr=(j&&j.responseData&&j.responseData.translatedText)||srcTxt;
+      if(/MYMEMORY|INVALID EMAIL|QUERY LENGTH/i.test(tr))tr=srcTxt;
+      _trCache[keys[i]]=tr;
+    }catch(e){_trCache[keys[i]]=srcTxt;}
+  }
+  _trSave();_trBusy=false;swap();
+}
 function today(){return new Date().toISOString().slice(0,10);}
 function ym(d){return String(d||'').slice(0,7);}
 function curYm(){return today().slice(0,7);}
@@ -347,7 +382,7 @@ const VIEWS_KEYS=['dash','report','perf','sched','pipe','accounts','acts','sales
 function setView(v,noPush){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);if(!noPush){try{history.pushState({v:v},'','#'+v);}catch(e){}}}
 window.addEventListener('popstate',function(){var v=(location.hash||'').replace('#','');setView(VIEWS_KEYS.indexOf(v)>=0?v:'dash',true);});
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>setView(a.dataset.v)));
-function render(){const f={dash:vDash,report:vReport,perf:vPerf,sched:vSched,pipe:vPipe,accounts:vAccounts,acts:vActs,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,funds:vFunds}[curView];document.getElementById('view').innerHTML=f();if(curView==='pipe')bindKb();applyLang();}
+function render(){const f={dash:vDash,report:vReport,perf:vPerf,sched:vSched,pipe:vPipe,accounts:vAccounts,acts:vActs,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,funds:vFunds}[curView];document.getElementById('view').innerHTML=f();if(curView==='pipe')bindKb();applyLang();applyUserTr();}
 function head(t,d,acts){return `<div class="topbar"><div><h2>${t}</h2><div class="desc">${d}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${acts||''}</div></div><div class="wrap">`;}
 function isEmpty(){return !(D.sales||[]).length&&!(D.orders||[]).length&&!(D.funds||[]).length&&!(D.items||[]).length;}
 
@@ -411,8 +446,8 @@ function vDash(){
   lateOrd.forEach(o=>alerts.push(`<div onclick="mOrder('${o.id}')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">🔴 <b>${esc(o.client)}</b> ${esc(o.product||'')} 납기 ${o.eta} 경과 (${ordChip(o.status)})</div>`));
   backlog.filter(o=>o.eta&&o.eta>=today()&&daysBetween(today(),o.eta)<=7).forEach(o=>alerts.push(`<div onclick="mOrder('${o.id}')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">🟡 <b>${esc(o.client)}</b> ${esc(o.product||'')} 납기 D-${daysBetween(today(),o.eta)}</div>`));
   low.forEach(i=>alerts.push(`<div onclick="setView('inv')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">📦 <b>${esc(i.name)}</b> 재고 ${itemQty(i.name)}${esc(i.unit||'')} &lt; 안전 ${i.safety}</div>`));
-  fu.forEach(a=>alerts.push(`<div onclick="setView('acts')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">📞 <b>${esc(a.client)}</b> 후속조치 지연: ${esc(a.next)} (${a.nextDate})</div>`));
-  fuDeals.forEach(d=>alerts.push(`<div onclick="setView('pipe')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">🎯 <b>${esc(d.client)}</b> 딜 액션 지연: ${esc(d.next)} (${d.nextDate})</div>`));
+  fu.forEach(a=>alerts.push(`<div onclick="setView('acts')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">📞 <b>${esc(a.client)}</b> 후속조치 지연: ${trUser(a.next)} (${a.nextDate})</div>`));
+  fuDeals.forEach(d=>alerts.push(`<div onclick="setView('pipe')" style="cursor:pointer;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">🎯 <b>${esc(d.client)}</b> 딜 액션 지연: ${trUser(d.next)} (${d.nextDate})</div>`));
   return head('📈 임원 대시보드',`${'미국법인'} 경영 현황 · 환율 ${SYM}1 = ₩${(D.rate||0).toLocaleString()} · 기준 ${today()}`,
     `<button class="btn btn-sm" onclick="mTargets()"><i class="bi bi-bullseye"></i> 목표 설정</button><button class="btn btn-sm" onclick="setRate()"><i class="bi bi-currency-exchange"></i> 환율</button>${isEmpty()?'<button class="btn btn-primary" onclick="seedSample(true)">샘플 데이터 넣기</button>':''}`)
     +hero
@@ -524,7 +559,7 @@ function dwSale(id){const s=(D.sales||[]).find(x=>x.id===id);if(!s)return;
       <div><div class="muted" style="font-size:11px">제품</div><b>${esc(s.product)||'-'}</b>${s.qty?' × '+s.qty:''}</div>
       <div><div class="muted" style="font-size:11px">매출액</div><b>${fm(s.amt)}</b> <span class="muted" style="font-size:11px">${fkrw(s.amt)}</span></div>
       <div><div class="muted" style="font-size:11px">미수 잔액</div><b style="color:${o?'var(--bad)':'var(--ok)'}">${fm(o)}</b></div></div>
-      ${s.memo?`<div class="muted" style="margin-top:10px;font-size:12.5px">${esc(s.memo)}</div>`:''}
+      ${s.memo?`<div class="muted" style="margin-top:10px;font-size:12.5px">${trUser(s.memo)}</div>`:''}
       <div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-sm" onclick="closeDw();mSale('${s.id}')"><i class="bi bi-pencil"></i> 수정</button>
       <button class="btn btn-sm" onclick="closeDw();openClient('${esc(s.client).replace(/'/g,"&#39;")}')"><i class="bi bi-building"></i> 거래처 분석</button></div></div>
     <div class="dwcard"><div class="sect"><span>💵 수금 내역</span><b style="color:var(--ok)">${fm(colSum(s))}</b></div>${colHtml}
@@ -642,7 +677,7 @@ function openClient(name){
         <div style="margin-top:10px"><button class="btn btn-sm" onclick="closeDw();mClient('${c.id}')"><i class="bi bi-pencil"></i> 정보 수정</button></div>`
         :`<div class="muted" style="font-size:12.5px">고객사 마스터 미등록</div><div style="margin-top:8px"><button class="btn btn-sm btn-primary" onclick="closeDw();mClient()">+ 고객사 등록</button></div>`;
       const dHtml=ds.length?ds.map(d=>`<div onclick="openDeal('${d.id}')" style="display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="chip" style="background:${DEAL_ST[d.stage]}22;color:${DEAL_ST[d.stage]}">${d.stage}</span><span style="flex:1">${esc(d.product)||'-'}</span><b>${fm(d.amt)}</b><span class="muted">${d.prob||0}%</span></div>`).join(''):'<div class="empty" style="padding:10px">딜 없음</div>';
-      const aHtml=as.length?as.map(a=>`<div style="padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px"><span class="chip ${ACT_T[a.type]||'c-gray'}">${esc(a.type)}</span> <span class="muted">${a.date}</span> ${esc(a.content)||''}${a.next&&!a.doneNext?` <span class="chip ${a.nextDate&&a.nextDate<today()?'c-red':'c-amber'}">→ ${esc(a.next)}</span>`:''}</div>`).join(''):'<div class="empty" style="padding:10px">활동 없음</div>';
+      const aHtml=as.length?as.map(a=>`<div style="padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px"><span class="chip ${ACT_T[a.type]||'c-gray'}">${esc(a.type)}</span> <span class="muted">${a.date}</span> ${trUser(a.content)||''}${a.next&&!a.doneNext?` <span class="chip ${a.nextDate&&a.nextDate<today()?'c-red':'c-amber'}">→ ${trUser(a.next)}</span>`:''}</div>`).join(''):'<div class="empty" style="padding:10px">활동 없음</div>';
       return `<div class="dwcard"><div class="sect"><span>👤 고객 정보</span></div>${info}</div>
       <div class="dwcard"><div class="sect"><span>🎯 딜</span><button class="btn btn-sm" onclick="closeDw();mDeal()">+ 딜</button></div>${dHtml}</div>
       <div class="dwcard"><div class="sect"><span>📞 최근 활동</span><button class="btn btn-sm" onclick="closeDw();mAct(null,'${esc(name).replace(/'/g,"&#39;")}')">+ 활동</button></div>${aHtml}</div>`;})()}`);
@@ -770,7 +805,7 @@ function vPipe(){
         <div class="amt">${fm(d.amt)}</div>
         <div class="ft"><span class="owner">${esc(d.owner)||''}</span><span class="prob" style="background:${probColor(d.prob)}">${d.prob||0}%</span></div>
         ${(()=>{const tn=(D.tasks||[]).filter(t=>t.dealId===d.id&&!t.done).length;return tn?`<div style="font-size:10px;color:#4f46e5;margin-top:5px;background:#eef2ff;border-radius:5px;padding:3px 6px"><i class="bi bi-check2-square"></i> ${jt('할일','Tasks')} ${tn}</div>`:'';})()}
-        ${d.next?`<div style="font-size:10px;color:#059669;margin-top:5px;background:#ecfdf5;border-radius:5px;padding:3px 6px"><i class="bi bi-arrow-right-circle-fill"></i> ${esc(d.next)}${d.nextDate?' · '+d.nextDate:''}${d.nextDate&&d.nextDate<today()?' ⚠':''}</div>`:''}
+        ${d.next?`<div style="font-size:10px;color:#059669;margin-top:5px;background:#ecfdf5;border-radius:5px;padding:3px 6px"><i class="bi bi-arrow-right-circle-fill"></i> ${trUser(d.next)}${d.nextDate?' · '+d.nextDate:''}${d.nextDate&&d.nextDate<today()?' ⚠':''}</div>`:''}
         ${d.expected?`<div class="due" style="${overdue?'color:#dc2626;font-weight:700':closingThis?'color:#d97706;font-weight:700':''}"><i class="bi bi-calendar3"></i> 예상 ${d.expected}${overdue?' ⚠️ 기한초과':closingThis?' · 이달마감':''}</div>`:''}
         ${(st==='협의중'||st==='견적발송')?`<div style="margin-top:6px"><button class="btn btn-sm" style="color:var(--ok);width:100%" onclick="event.stopPropagation();wonDeal('${d.id}')">✓ 성사 → 수주 생성</button></div>`:''}
       </div>`;}).join('');
@@ -873,8 +908,8 @@ function vActs(){
   const rows=L.length?L.map(a=>{const late=a.nextDate&&a.nextDate<today()&&!a.doneNext;
     return `<tr onclick="mAct('${a.id}')"><td class="l">${a.date}</td><td class="l"><span class="chip ${ACT_T[a.type]||'c-gray'}">${esc(a.type)}</span></td>
     <td class="l"><b style="color:var(--ink)">${esc(a.client)}</b></td>
-    <td class="l" style="max-width:320px;overflow:hidden;text-overflow:ellipsis">${esc(a.content)||'-'}</td>
-    <td class="l">${a.next?`${esc(a.next)} <span class="chip ${late?'c-red':a.doneNext?'c-green':'c-amber'}">${a.doneNext?'완료':(late?'지연 '+a.nextDate:a.nextDate||'')}</span>`:'-'}</td>
+    <td class="l" style="max-width:320px;overflow:hidden;text-overflow:ellipsis">${trUser(a.content)||'-'}</td>
+    <td class="l">${a.next?`${trUser(a.next)} <span class="chip ${late?'c-red':a.doneNext?'c-green':'c-amber'}">${a.doneNext?'완료':(late?'지연 '+a.nextDate:a.nextDate||'')}</span>`:'-'}</td>
     <td>${a.next&&!a.doneNext?`<button class="btn btn-sm" onclick="event.stopPropagation();doneAct('${a.id}')">✓ 완료</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="6" class="empty">활동 기록이 없습니다</td></tr>';
   return head('📞 활동 기록','콜·미팅·방문 이력 + 후속조치 관리'+(fuAll.length?` · <span style="color:var(--bad)">후속 지연 ${fuAll.length}건</span>`:''),
     `<select class="sel" onchange="fActClient=this.value;render()"><option value="">고객사 전체</option>${clients.map(c=>`<option ${fActClient===c?'selected':''}>${esc(c)}</option>`).join('')}</select><button class="btn btn-primary" onclick="mAct()">+ 활동 등록</button>`)
@@ -891,7 +926,7 @@ function mAct(id,preClient){const a=id?(D.acts||[]).find(x=>x.id===id):{date:tod
   openM(id?'활동 수정':'활동 등록',dlist()+
     `<div class="fr"><div class="fld"><label>날짜</label><input id="f-date" type="date" value="${a.date||today()}"></div><div class="fld"><label>유형</label><select id="f-type">${Object.keys(ACT_T).map(t=>`<option ${a.type===t?'selected':''}>${t}</option>`).join('')}</select></div></div>
     <div class="fld"><label>고객사</label><input id="f-client" list="dl-clients" value="${esc(a.client)}"></div>
-    <div class="fld"><label>내용</label><textarea id="f-content">${esc(a.content||'')}</textarea></div>
+    <div class="fld"><label>내용</label><textarea id="f-content">${trUser(a.content||'')}</textarea></div>
     <div class="fr"><div class="fld"><label>후속 조치</label><input id="f-next" value="${esc(a.next||'')}" placeholder="예: 견적 발송"></div><div class="fld"><label>후속 기한</label><input id="f-nextd" type="date" value="${a.nextDate||''}"></div></div>`,
     async()=>{const g=x=>document.getElementById(x).value;const rec={id:id||uid(),date:g('f-date'),type:g('f-type'),client:g('f-client').trim(),content:g('f-content').trim(),next:g('f-next').trim(),nextDate:g('f-nextd'),doneNext:(id&&a.doneNext)||false};
       if(!rec.client){toast('고객사를 입력하세요');return false;}
@@ -999,7 +1034,7 @@ function schCard(it){const k=SCH_KIND[it.kind];const overdue=it.date<today()&&!i
   return `<div style="border-left:3px solid ${k.c};background:#f8fafc;border-radius:7px;padding:7px 9px;margin-bottom:6px;${it.done?'opacity:.55':''}">
     <div style="display:flex;gap:6px;align-items:center">${it.ref==='task'?`<input type="checkbox" ${it.done?'checked':''} onclick="event.stopPropagation();toggleTask('${it.id}')" style="cursor:pointer">`:''}
       <span class="chip" style="background:${k.c}22;color:${k.c};font-size:10px">${k.i} ${jt(it.kind,k.en)}</span>${it.time?`<span class="muted" style="font-size:11px">${it.time}</span>`:''}${overdue?`<span class="chip c-red" style="font-size:9.5px">${jt('지연','late')}</span>`:''}</div>
-    <div onclick="schClick2('${it.ref}','${it.id}')" style="font-size:12.5px;font-weight:600;color:var(--ink);margin-top:4px;cursor:pointer;${it.done?'text-decoration:line-through':''}">${esc(it.title)}</div>
+    <div onclick="schClick2('${it.ref}','${it.id}')" style="font-size:12.5px;font-weight:600;color:var(--ink);margin-top:4px;cursor:pointer;${it.done?'text-decoration:line-through':''}">${trUser(it.title)}</div>
     ${it.owner?`<div class="muted" style="font-size:10.5px;margin-top:2px">👤 ${esc(it.owner)}</div>`:''}</div>`;
 }
 function schNav(delta){if(schMode==='week')schRef.setDate(schRef.getDate()+delta*7);else schRef.setMonth(schRef.getMonth()+delta);schRef=new Date(schRef);render();}
@@ -1063,8 +1098,8 @@ function openDeal(id){
   const acts=(D.acts||[]).filter(a=>a.client===d.client).sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,6);
   const stageBar=Object.keys(DEAL_ST).map(st=>`<span onclick="dealStage('${id}','${st}')" style="cursor:pointer;padding:4px 10px;border-radius:7px;font-size:11px;font-weight:700;${d.stage===st?`background:${DEAL_ST[st]};color:#fff`:'background:#eef1f5;color:#94a3b8'}">${jt(st,EN[st]||st)}</span>`).join('');
   const taskHtml=tasks.length?tasks.map(t=>{const late=t.date&&t.date<today()&&!t.done;
-    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px"><input type="checkbox" ${t.done?'checked':''} onclick="toggleTaskDrawer('${t.id}','${id}')" style="cursor:pointer"><span style="flex:1;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(t.title)}</span>${t.date?`<span class="muted" style="font-size:11px;${late?'color:var(--bad);font-weight:700':''}">${t.date}${late?' ⚠':''}</span>`:''}<button class="btn btn-sm" style="color:var(--bad);padding:2px 7px" onclick="delTaskDrawer('${t.id}','${id}')">×</button></div>`;}).join(''):`<div class="empty" style="padding:8px">${jt('등록된 할일이 없습니다','No tasks yet')}</div>`;
-  const actHtml=acts.length?acts.map(a=>`<div style="padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px"><span class="chip ${ACT_T[a.type]||'c-gray'}">${jt(a.type,EN[a.type]||a.type)}</span> <span class="muted">${a.date}</span> ${esc(a.content||'')}${a.next&&!a.doneNext?` <span class="chip ${a.nextDate&&a.nextDate<today()?'c-red':'c-amber'}">→ ${esc(a.next)}</span>`:''}</div>`).join(''):`<div class="empty" style="padding:8px">${jt('활동 기록 없음','No activities')}</div>`;
+    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px"><input type="checkbox" ${t.done?'checked':''} onclick="toggleTaskDrawer('${t.id}','${id}')" style="cursor:pointer"><span style="flex:1;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${trUser(t.title)}</span>${t.date?`<span class="muted" style="font-size:11px;${late?'color:var(--bad);font-weight:700':''}">${t.date}${late?' ⚠':''}</span>`:''}<button class="btn btn-sm" style="color:var(--bad);padding:2px 7px" onclick="delTaskDrawer('${t.id}','${id}')">×</button></div>`;}).join(''):`<div class="empty" style="padding:8px">${jt('등록된 할일이 없습니다','No tasks yet')}</div>`;
+  const actHtml=acts.length?acts.map(a=>`<div style="padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px"><span class="chip ${ACT_T[a.type]||'c-gray'}">${jt(a.type,EN[a.type]||a.type)}</span> <span class="muted">${a.date}</span> ${trUser(a.content||'')}${a.next&&!a.doneNext?` <span class="chip ${a.nextDate&&a.nextDate<today()?'c-red':'c-amber'}">→ ${trUser(a.next)}</span>`:''}</div>`).join(''):`<div class="empty" style="padding:8px">${jt('활동 기록 없음','No activities')}</div>`;
   const canWin=(d.stage==='협의중'||d.stage==='견적발송');
   openDw(jt('딜','Deal')+' · '+jt(d.stage,EN[d.stage]||d.stage), d.client,
     `<div class="dwcard"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
@@ -1074,9 +1109,9 @@ function openDeal(id){
       <div><div class="muted" style="font-size:11px">${jt('예상 마감','Expected close')}</div><b style="color:${d.expected&&d.expected<today()?'var(--bad)':'var(--ink)'}">${d.expected||'-'}</b></div>
       <div><div class="muted" style="font-size:11px">${jt('담당','Owner')}</div><b style="color:var(--ink)">${esc(d.owner)||'-'}</b></div></div>
       <div style="margin-top:13px"><div class="muted" style="font-size:11px;margin-bottom:6px">${jt('단계 · 클릭하여 이동','Stage · click to move')}</div><div style="display:flex;gap:5px;flex-wrap:wrap">${stageBar}</div></div>
-      ${d.memo?`<div class="muted" style="margin-top:11px;font-size:12px;background:#f8fafc;border-radius:7px;padding:8px 10px">${esc(d.memo)}</div>`:''}</div>
+      ${d.memo?`<div class="muted" style="margin-top:11px;font-size:12px;background:#f8fafc;border-radius:7px;padding:8px 10px">${trUser(d.memo)}</div>`:''}</div>
     <div class="dwcard"><div class="sect"><span>✅ ${jt('할일 · 다음 액션','Tasks · Next actions')}</span></div>
-      ${d.next?`<div style="font-size:12px;color:#059669;background:#ecfdf5;border-radius:7px;padding:7px 9px;margin-bottom:9px">▸ ${esc(d.next)}${d.nextDate?' · '+d.nextDate+(d.nextDate<today()?' ⚠':''):''}</div>`:''}
+      ${d.next?`<div style="font-size:12px;color:#059669;background:#ecfdf5;border-radius:7px;padding:7px 9px;margin-bottom:9px">▸ ${trUser(d.next)}${d.nextDate?' · '+d.nextDate+(d.nextDate<today()?' ⚠':''):''}</div>`:''}
       ${taskHtml}
       <div style="display:flex;gap:6px;margin-top:10px"><input id="ndt-title" placeholder="${jt('할 일 추가 후 Enter','Add task, then Enter')}" onkeydown="if(event.key==='Enter')addDealTask('${id}')" style="flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px"><input id="ndt-date" type="date" value="${today()}" style="width:135px;padding:8px 10px;border:1px solid var(--line);border-radius:8px"><button class="btn btn-sm btn-primary" onclick="addDealTask('${id}')">+</button></div></div>
     <div class="dwcard"><div class="sect"><span>📞 ${jt('활동','Activities')}</span><button class="btn btn-sm" onclick="closeDw();mAct(null,'${esc(d.client).replace(/'/g,"&#39;")}')">+ ${jt('활동','Activity')}</button></div>${actHtml}</div>
@@ -1111,7 +1146,7 @@ async function delM(){if(!confirm(jt('삭제할까요?','Delete this item?')))re
 document.getElementById('mbg').addEventListener('click',e=>{if(e.target.id==='mbg')closeM();});
 function openDw(kicker,title,body){
   document.getElementById('dw').innerHTML=`<div class="dwh"><button class="x" onclick="closeDw()">×</button><div class="k">${kicker}</div><h3>${title}</h3></div><div class="dwb">${body}</div>`;
-  document.getElementById('dwbg').style.display='block';document.getElementById('dw').classList.add('open');applyLang();}
+  document.getElementById('dwbg').style.display='block';document.getElementById('dw').classList.add('open');applyLang();applyUserTr();}
 function closeDw(){document.getElementById('dw').classList.remove('open');document.getElementById('dwbg').style.display='none';}
 
 // ── 샘플 데이터 ──
