@@ -66,6 +66,11 @@ button{font-family:inherit;cursor:pointer}input,select,textarea{font-family:inhe
 .mtag{display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:5px;font-size:10.5px;font-weight:700}
 .pqchip{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
 .pqchip:hover{background:#f1f5f9}.pqchip.on{background:#0f172a;color:#fff;border-color:#0f172a}
+.seg{display:inline-flex;background:#eef1f5;border-radius:11px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:6px 14px;font-size:12.5px;font-weight:600;color:#64748b;border-radius:8px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:background .15s,color .15s;font-family:inherit;line-height:1}
+.seg button:hover:not(.on){color:var(--ink)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(16,24,40,.12)}
+.seg button i{font-size:13px;opacity:.85}
 .statcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 17px;box-shadow:var(--sh)}
 .statcard .sv{font-size:26px;font-weight:800;color:var(--ink);line-height:1}.statcard .sl{font-size:12px;color:var(--muted);margin-top:7px}
 .tl{position:relative}
@@ -1057,6 +1062,7 @@ function mClient(id){const c=id?(D.clients||[]).find(x=>x.id===id):{name:'',cont
 }
 
 // ── CRM: 활동 기록 ──
+function _segIc(t){var p={timeline:'<line x1="3.5" y1="4" x2="13" y2="4"/><line x1="3.5" y1="8" x2="13" y2="8"/><line x1="3.5" y1="12" x2="13" y2="12"/>',calendar:'<rect x="2.5" y="3.2" width="11" height="10.3" rx="1.6"/><line x1="2.5" y1="6.2" x2="13.5" y2="6.2"/><line x1="5.5" y1="1.8" x2="5.5" y2="4"/><line x1="10.5" y1="1.8" x2="10.5" y2="4"/>',list:'<rect x="2.5" y="3.2" width="11" height="9.8" rx="1.6"/><line x1="2.5" y1="6.4" x2="13.5" y2="6.4"/><line x1="2.5" y1="9.6" x2="13.5" y2="9.6"/>',today:'<circle cx="8" cy="8" r="5.3"/><line x1="8" y1="8" x2="8" y2="5.2"/><line x1="8" y1="8" x2="10.2" y2="8"/>',week:'<rect x="2.5" y="3.2" width="11" height="10.3" rx="1.6"/><line x1="5.5" y1="1.8" x2="5.5" y2="4"/><line x1="10.5" y1="1.8" x2="10.5" y2="4"/><line x1="5" y1="9" x2="11" y2="9"/>'}[t]||'';return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="vertical-align:-2px">'+p+'</svg>';}
 let fActClient='', fActType='', actMode='timeline', actRef=new Date();
 const ACT_ICON={'콜':'📞','미팅':'🤝','이메일':'✉️','방문':'📍'};
 const ACT_COL={'콜':'#2563eb','미팅':'#7c3aed','이메일':'#64748b','방문':'#16a34a'};
@@ -1070,7 +1076,7 @@ function vActs(){
   var cm=curYm(), wk=new Date();wk.setDate(wk.getDate()+7);var wkS=wk.toISOString().slice(0,10);
   var up=(D.acts||[]).filter(a=>a.nextDate&&!a.doneNext&&a.nextDate>=today()&&a.nextDate<=wkS);
   var mCnt=(D.acts||[]).filter(a=>ym(a.date)===cm).length;
-  var seg='<div class="seg">'+[['timeline',jt('타임라인','Timeline'),'bi-list-ul'],['calendar',jt('달력','Calendar'),'bi-calendar3'],['list',jt('목록','List'),'bi-table']].map(function(x){return '<button class="'+(actMode===x[0]?'on':'')+'" onclick="setActMode(\''+x[0]+'\')"><i class="bi '+x[2]+'"></i> '+x[1]+'</button>';}).join('')+'</div>';
+  var seg='<div class="seg">'+[['timeline',jt('타임라인','Timeline')],['calendar',jt('달력','Calendar')],['list',jt('목록','List')]].map(function(x){return '<button class="'+(actMode===x[0]?'on':'')+'" onclick="setActMode(\''+x[0]+'\')">'+_segIc(x[0])+' '+x[1]+'</button>';}).join('')+'</div>';
   var filters='<select class="sel" onchange="fActType=this.value;render()"><option value="">'+jt('유형 전체','All types')+'</option>'+Object.keys(ACT_T).map(t=>'<option value="'+t+'" '+(fActType===t?'selected':'')+'>'+ACT_ICON[t]+' '+jt(t,EN[t]||t)+'</option>').join('')+'</select>'
     +'<select class="sel" onchange="fActClient=this.value;render()"><option value="">'+jt('고객사 전체','All accounts')+'</option>'+clients.map(c=>'<option '+(fActClient===c?'selected':'')+'>'+esc(c)+'</option>').join('')+'</select>';
   var nav=actMode==='calendar'?'<button class="btn btn-sm" onclick="actNav(-1)"><i class="bi bi-chevron-left"></i></button><button class="btn btn-sm" onclick="actRef=new Date();render()">'+jt('오늘','Today')+'</button><button class="btn btn-sm" onclick="actNav(1)"><i class="bi bi-chevron-right"></i></button>':'';
@@ -1259,7 +1265,7 @@ function vSched(){
   const todayN=items.filter(x=>x.date===t&&!x.done).length;
   const wkSet=new Set(schWeekDays(new Date()).map(fmtD));
   const weekN=items.filter(x=>wkSet.has(x.date)&&!x.done).length;
-  const seg=`<div class="seg"><button class="${schMode==='today'?'on':''}" onclick="schMode='today';render()">${jt('오늘','Today')}</button><button class="${schMode==='week'?'on':''}" onclick="schMode='week';render()">${jt('주간','Week')}</button><button class="${schMode==='month'?'on':''}" onclick="schMode='month';render()">${jt('월간','Month')}</button></div>`;
+  const seg=`<div class="seg"><button class="${schMode==='today'?'on':''}" onclick="schMode='today';render()">${_segIc('today')} ${jt('오늘','Today')}</button><button class="${schMode==='week'?'on':''}" onclick="schMode='week';render()">${_segIc('week')} ${jt('주간','Week')}</button><button class="${schMode==='month'?'on':''}" onclick="schMode='month';render()">${_segIc('calendar')} ${jt('월간','Month')}</button></div>`;
   const nav=schMode!=='today'?`<button class="btn btn-sm" onclick="schNav(-1)"><i class="bi bi-chevron-left"></i></button><button class="btn btn-sm" onclick="schRef=new Date();render()">${jt('오늘','Today')}</button><button class="btn btn-sm" onclick="schNav(1)"><i class="bi bi-chevron-right"></i></button>`:'';
   const legend=`<div style="display:flex;gap:15px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-bottom:12px">${Object.keys(SCH_KIND).map(k=>`<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${SCH_KIND[k].c};margin-right:4px;vertical-align:middle"></span>${SCH_KIND[k].i} ${jt(k,SCH_KIND[k].en)}</span>`).join('')}</div>`;
   const body=schMode==='today'?schToday():schMode==='week'?schWeek():schMonth();
