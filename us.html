@@ -326,7 +326,7 @@ function monthsOf(arr,f){const s=new Set(arr.map(x=>ym(x[f||'date'])).filter(Boo
 function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000);}
 function pct(n,d){return d>0?n/d*100:0;}
 function ordChip(s){return `<span class="chip ${ORD_ST[s]||'c-gray'}">${esc(s)}</span>`;}
-function clientList(){return [...new Set([].concat((D.sales||[]).map(s=>s.client),(D.orders||[]).map(o=>o.client)).filter(Boolean))].sort();}
+function clientList(){return [...new Set([].concat((D.sales||[]).map(s=>s.client),(D.orders||[]).map(o=>o.client),(D.deals||[]).map(d=>d.client),(D.clients||[]).map(c=>c.name)).filter(Boolean))].sort();}
 function dlist(){return '<datalist id="dl-clients">'+clientList().map(c=>'<option value="'+esc(c)+'">').join('')+'</datalist>';}
 
 // ── 집계 (매출인식 기준 = sales.date / 수금 = collections.date) ──
@@ -1103,7 +1103,8 @@ let _onSave=null,_onDel=null;
 function openM(title,body,onSave,onDel){_onSave=onSave;_onDel=onDel;
   document.getElementById('modal').innerHTML=`<div class="mh"><h3>${title}</h3><button class="x" onclick="closeM()">×</button></div><div class="mb">${body}</div>
     <div class="mf"><div>${onDel?'<button class="btn" style="color:var(--bad)" onclick="delM()">삭제</button>':''}</div><div style="display:flex;gap:8px"><button class="btn" onclick="closeM()">취소</button><button class="btn btn-primary" onclick="saveM()">저장</button></div></div>`;
-  document.getElementById('mbg').style.display='flex';applyLang();}
+  document.getElementById('mbg').style.display='flex';applyLang();
+  setTimeout(function(){var m=document.getElementById('modal');var el=[].slice.call(m.querySelectorAll('input,select,textarea')).find(function(x){return x.type!=='date'&&x.type!=='time'&&x.type!=='checkbox'&&!x.disabled;});if(el){el.focus();if(el.select)try{el.select();}catch(e){}}},60);}
 function closeM(){document.getElementById('mbg').style.display='none';}
 async function saveM(){if(_onSave&&await _onSave()===false)return;closeM();}
 async function delM(){if(!confirm(jt('삭제할까요?','Delete this item?')))return;if(_onDel)await _onDel();closeM();}
@@ -1185,6 +1186,13 @@ async function seedSample(save){
   if(save)await saveAll('샘플 데이터 저장됨');
 }
 
+// 편의: ESC 닫기 · Enter 저장(입력창 한정)
+document.addEventListener('keydown',function(e){
+  var modalOpen=document.getElementById('mbg').style.display==='flex';
+  var dwOpen=document.getElementById('dw').classList.contains('open');
+  if(e.key==='Escape'){ if(modalOpen)closeM(); else if(dwOpen)closeDw(); }
+  else if(e.key==='Enter'&&modalOpen&&e.target&&e.target.tagName==='INPUT'&&e.target.type!=='checkbox'){ e.preventDefault(); saveM(); }
+});
 boot();
 </script>
 </body>
