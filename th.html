@@ -192,6 +192,13 @@ async function saveAll(msg){
   if(error){toast('저장 실패: '+error.message);return false;}
   render();toast(msg||'저장됨');return true;}
 async function doLogout(){await _sb.auth.signOut();Object.keys(localStorage).filter(k=>k.startsWith('sb-')).forEach(k=>localStorage.removeItem(k));location.href=CENTRAL;}
+/* ── 자동 로그아웃: 60분 무동작 시 (마스터 제외) ── */
+(function(){var IDLE_MS=60*60*1000,_it;
+  function _logout(){if(typeof doLogout==='function'){doLogout();return;}try{_sb.auth.signOut().then(function(){location.href=CENTRAL;});}catch(e){location.href=CENTRAL;}}
+  function _fire(){try{if(typeof _sb!=='undefined'&&_sb&&_sb.auth&&_sb.auth.getSession){_sb.auth.getSession().then(function(r){var s=r&&r.data&&r.data.session;if(s&&s.user&&s.user.email==='pmw0406@gmail.com'){_arm();return;}if(s){_logout();}else{_arm();}}).catch(function(){_logout();});}else{_logout();}}catch(e){_logout();}}
+  function _arm(){clearTimeout(_it);_it=setTimeout(_fire,IDLE_MS);}
+  ['mousemove','mousedown','keydown','touchstart','scroll','click','wheel'].forEach(function(ev){document.addEventListener(ev,_arm,{passive:true,capture:true});});
+  _arm();})();
 async function changePw(){const np=prompt('새 비밀번호 (6자 이상)');if(np===null)return;if((np||'').length<6){alert('6자 이상이어야 합니다.');return;}if(prompt('확인을 위해 다시 입력하세요')!==np){alert('일치하지 않습니다.');return;}const r=await _sb.auth.updateUser({password:np});if(r.error){alert('변경 실패: '+r.error.message);return;}alert('비밀번호가 변경되었습니다.');}
 async function goSite(url){try{const{data:{session:s}}=await _sb.auth.getSession();if(s&&url.indexOf('#')<0)url+='#at='+encodeURIComponent(s.access_token)+'&rt='+encodeURIComponent(s.refresh_token);}catch(e){}location.href=url;}
 document.addEventListener('click',e=>{const w=document.querySelector('.switch-wrap');if(w&&!w.contains(e.target))document.getElementById('swdd').classList.remove('open');});
