@@ -1291,7 +1291,7 @@ function vHQ(){
         <div style="display:flex;flex-direction:column;justify-content:space-between;height:150px;padding:2px 0">${yaxis}</div>
         <div style="flex:1;position:relative">${lastLbl}<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:150px">${grid}${mk('achv','#4f46e5',true)}${mk('payRate','#16a34a',false)}</svg></div>
       </div>${months}
-      <div style="margin-top:14px;overflow:auto"><table style="font-size:12px"><thead><tr><th class="l">${jt('월','Month')}</th><th>${jt('매출','Revenue')}</th><th>${jt('달성','Achv')}</th><th>${jt('수금률','Coll%')}</th><th>${jt('미수','AR')}</th><th>${jt('자금','Cash')}</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+      <div style="margin-top:14px;overflow:auto"><table style="font-size:12px"><thead><tr><th class="l">${jt('월말','Month')}</th><th>${jt('누적매출','YTD Rev')}</th><th>${jt('달성','Achv')}</th><th>${jt('수금률','Coll%')}</th><th>${jt('미수','AR')}</th><th>${jt('자금','Cash')}</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   } else {
     trend=`<div class="card"><div class="sect"><span>📈 ${jt('건전성 추이','Health Trend')}</span><button class="btn btn-primary btn-sm" onclick="saveSnapshot()"><i class="bi bi-camera"></i> ${jt('이번달 스냅샷 저장','Save Snapshot')}</button></div>
       <div class="empty">${jt('매월 스냅샷을 저장하면 목표달성·수금률·미수·자금 추세가 쌓입니다. (현재 '+snaps.length+'개)','Save monthly snapshots to build the trend. ('+snaps.length+' saved)')}</div></div>`;
