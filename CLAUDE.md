@@ -15,15 +15,14 @@
 
 ## ⚠️ 반드시 지킬 4가지
 
-1. **main에 직접 push 금지 — 항상 PR로.**
+1. **수정 → main에 바로 반영(직접 push).** 별도 PR·머지 없이 main에 커밋·푸시하면 몇 분 뒤 라이브에 자동 반영된다.
    ```
-   git switch -c fix-무엇을-고침      # 새 브랜치
-   # ...수정...
-   git commit -am "무엇을 왜 고쳤는지"
-   git push -u origin fix-무엇을-고침
+   git add -A
+   git commit -m "무엇을 왜 고쳤는지"
+   git push
    ```
-   → GitHub에서 Pull Request 생성 → **자동검사(초록불)** 확인 → **Merge** 클릭.
-   머지되면 몇 분 뒤 라이브에 자동 반영된다(직접 배포할 것 없음).
+   - ⚠️ **push 전에 반드시 확인**: 브라우저에서 열어 동작 OK, 콘솔 에러 0. 바로 라이브로 나가므로 깨진 채 올리면 사이트가 깨진 채 보인다.
+   - 잘못 올렸으면 즉시 되돌리기: `git revert HEAD && git push` (직전 변경을 취소해 다시 라이브 반영).
 
 2. **`us.html`(미국)과 `th.html`(태국)만 수정한다.** 이 두 사이트가 담당 영역이다.
    - `index.html` · `.github/` · `CLAUDE.md`는 오너 승인 영역이니 건드리지 말 것.
