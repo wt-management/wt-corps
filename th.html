@@ -752,6 +752,11 @@ async function seedSample(save){
     {id:cid(),ym:curYm(),category:'임차료',amt:E2,memo:'사무실+창고'},
     {id:cid(),ym:curYm(),category:'물류비',amt:E3,memo:''},
   ];
+  D.equipment=[
+    {id:cid(),serial:'WT-OX-24001',item:'Oligio X 본체',status:'재고',client:'',inDate:dt(-5),shipRef:'선적 SH-2607',outDate:'',note:'',events:[{date:dt(-5),type:'입고',detail:'선적 SH-2607'}]},
+    {id:cid(),serial:'WT-OX-24002',item:'Oligio X 본체',status:'설치',client:C1,inDate:dt(-5),shipRef:'선적 SH-2607',outDate:dt(-4),note:'',events:[{date:dt(-5),type:'입고',detail:'선적 SH-2607'},{date:dt(-4),type:'출고',detail:C1},{date:dt(-3),type:'설치',detail:'설치 완료'}]},
+    {id:cid(),serial:'WT-LV-24010',item:'Lavieen 본체',status:'AS',client:C3,inDate:mAgo(4,15),shipRef:'',outDate:dt(-14),note:'헤드 교체 요청',events:[{date:mAgo(4,15),type:'입고',detail:''},{date:dt(-14),type:'출고',detail:C3},{date:dt(-2),type:'AS',detail:'헤드 교체 요청'}]},
+  ];
   // 목표: 올해 12개월 (월평균 매출 수준 ×1.1)
   const yr=curYr();D.targets={};
   for(let m=1;m<=12;m++)D.targets[yr+'-'+String(m).padStart(2,'0')]=5000000;
