@@ -150,6 +150,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
       <a data-v="clients"><span class="ico">🏢</span><span class="lbl">거래처 분석</span></a>
       <div class="grp">운영</div>
       <a data-v="inv"><span class="ico">📦</span><span class="lbl">물류 · 재고</span></a>
+      <a data-v="asset"><span class="ico">🔧</span><span class="lbl">장비 이력</span></a>
       <a data-v="funds"><span class="ico">🏦</span><span class="lbl">자금 관리</span></a>
       <a data-v="exp"><span class="ico">🧾</span><span class="lbl">비용 · 인건비</span></a>
     </nav>
@@ -185,8 +186,10 @@ const CENTRAL='https://wt-management.github.io/wontech/';
 const KEY='corp_th_erp', SYM='฿', CUR='THB';
 const ORD_ST={'수주':'c-blue','생산중':'c-amber','선적중':'c-cyan','납품완료':'c-green','취소':'c-gray'};
 const EXP_CATS=['급여','임차료','물류비','마케팅','출장비','기타'];
+const ASSET_ST={'재고':'#64748b','출고':'#16a34a','설치':'#0d9488','AS':'#f59e0b','반품':'#dc2626'};
+const EVT_COL={'입고':'#16a34a','출고':'#2563eb','설치':'#0d9488','AS':'#f59e0b','반품':'#dc2626'};
 let ME='',curView='dash',D=null,LOCAL=false;
-const blank=()=>({v:2,rate:38,targets:{},accounts:[{name:'주거래계좌',opening:0}],sales:[],orders:[],items:[],moves:[],funds:[],expenses:[]});
+const blank=()=>({v:2,rate:38,targets:{},accounts:[{name:'주거래계좌',opening:0}],sales:[],orders:[],items:[],moves:[],funds:[],expenses:[],equipment:[]});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.random().toString(16).slice(2);
 
 // ── 부트 ──
@@ -262,7 +265,7 @@ function itemQty(name){const it=(D.items||[]).find(i=>i.name===name);let q=it?(+
 // ── 라우팅 ──
 function setView(v){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>setView(a.dataset.v)));
-function render(){const f={dash:vDash,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,funds:vFunds,exp:vExp}[curView];document.getElementById('view').innerHTML=f();}
+function render(){const f={dash:vDash,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,asset:vAsset,funds:vFunds,exp:vExp}[curView];document.getElementById('view').innerHTML=f();}
 function head(t,d,acts){return `<div class="topbar"><div><h2>${t}</h2><div class="desc">${d}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${acts||''}</div></div><div class="wrap">`;}
 function isEmpty(){return !(D.sales||[]).length&&!(D.orders||[]).length&&!(D.funds||[]).length&&!(D.items||[]).length;}
 
@@ -533,6 +536,84 @@ function mMove(id){const m=id?(D.moves||[]).find(x=>x.id===id):{date:today(),typ
       if(!rec.item){toast('품목을 선택하세요');return false;}
       const i=(D.moves||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.moves[i]=rec;else D.moves.push(rec);return await saveAll();},
     id?async()=>{D.moves=D.moves.filter(x=>x.id!==id);await saveAll('삭제됨');}:null);
+}
+
+// ── 장비 이력 ──
+let fAssetSt='',fAssetItem='',fAssetQ='';
+function setAssetF(k,v){if(k==='st')fAssetSt=v;if(k==='item')fAssetItem=v;render();}
+function _assetList(){let L=(D.equipment||[]).slice();
+  if(fAssetSt)L=L.filter(e=>e.status===fAssetSt);
+  if(fAssetItem)L=L.filter(e=>e.item===fAssetItem);
+  if(fAssetQ){const qq=fAssetQ.toLowerCase();L=L.filter(e=>((e.serial||'')+' '+(e.client||'')+' '+(e.item||'')).toLowerCase().indexOf(qq)>=0);}
+  return L.sort((a,b)=>(b.inDate||'').localeCompare(a.inDate||''));}
+function vAsset(){
+  const all=(D.equipment||[]);
+  const inStock=all.filter(e=>e.status==='재고').length;
+  const atClient=all.filter(e=>['출고','설치','AS'].indexOf(e.status)>=0).length;
+  const svc=all.filter(e=>['AS','반품'].indexOf(e.status)>=0).length;
+  const itemsU=Object.keys(all.reduce((a,e)=>{if(e.item)a[e.item]=1;return a;},{}));
+  const L=_assetList();
+  const rows=L.length?L.map(e=>{const col=ASSET_ST[e.status]||'#64748b';const loc=e.status==='재고'?'🏭 창고':(e.client?('🏥 '+esc(e.client)):'출고됨');
+    return `<tr onclick="openAsset('${e.id}')" style="cursor:pointer"><td class="l"><b style="color:var(--ink)">🔖 ${esc(e.serial)}</b></td><td class="l">${esc(e.item)}</td><td class="l"><span class="chip" style="background:${col}1a;color:${col};font-weight:700">${esc(e.status)}</span></td><td class="l">${loc}</td><td class="l muted">${e.inDate||'-'}</td><td class="l muted">${e.outDate||'-'}</td></tr>`;
+  }).join(''):'<tr><td colspan="6" class="empty">장비가 없습니다 — 신규 등록 버튼으로 추가하세요</td></tr>';
+  const stChips=['','재고','출고','설치','AS','반품'].map(s=>{const on=fAssetSt===s;const c=s?ASSET_ST[s]:'#4f46e5';return `<button onclick="setAssetF('st','${s}')" style="padding:5px 12px;border-radius:999px;border:1px solid ${on?c:'var(--line)'};background:${on?c:'#fff'};color:${on?'#fff':'var(--body)'};font-size:12px;font-weight:${on?'700':'500'};cursor:pointer">${s===''?'전체':s}</button>`;}).join('');
+  const itemOpts='<option value="">전체 품목</option>'+itemsU.map(i=>`<option ${fAssetItem===i?'selected':''}>${esc(i)}</option>`).join('');
+  return head('🔧 장비 이력', '시리얼 단위 장비 추적 · 입고 → 출고 → 고객사 · 행 클릭 → 전체 이력',
+    `<button class="btn btn-sm" onclick="mAsset()">+ 장비</button>`)
+    +`<div class="grid kpis" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi"><div class="v">${all.length}</div><div class="l">총 장비</div></div>
+      <div class="kpi"><div class="v">${inStock}</div><div class="l">창고 재고</div></div>
+      <div class="kpi"><div class="v" style="color:var(--ok)">${atClient}</div><div class="l">고객사 보유</div></div>
+      <div class="kpi"><div class="v" style="color:${svc?'var(--bad)':'var(--ink)'}">${svc}</div><div class="l">AS · 반품</div></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><div style="display:flex;gap:5px;flex-wrap:wrap">${stChips}</div><select onchange="setAssetF('item',this.value)" style="margin-left:auto">${itemOpts}</select><input placeholder="시리얼·고객사 검색" value="${esc(fAssetQ)}" oninput="fAssetQ=this.value" onkeydown="if(event.key==='Enter')render()" style="min-width:160px"></div>
+    <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">시리얼</th><th class="l">품목</th><th class="l">상태</th><th class="l">현재 위치</th><th class="l">입고일</th><th class="l">출고일</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+function openAsset(id){
+  const e=(D.equipment||[]).find(x=>x.id===id);if(!e)return;
+  const col=ASSET_ST[e.status]||'#64748b';
+  const evs=(e.events||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const tl=evs.length?evs.map(ev=>{const ec=EVT_COL[ev.type]||'#64748b';return `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)"><span class="muted" style="width:76px;font-size:12px">${ev.date||''}</span><span class="chip" style="background:${ec}1a;color:${ec};font-weight:700">${esc(ev.type)}</span><span style="flex:1;font-size:12.5px">${esc(ev.detail||'')}</span></div>`;}).join(''):'<div class="empty">이력 없음</div>';
+  const esn=esc(e.id);
+  let acts='';
+  if(e.status==='출고')acts+=`<button class="btn btn-sm" style="background:#ccfbf1;border-color:#99f6e4;color:#0f766e;font-weight:700" onclick="assetEvent('${esn}','설치')">🔧 설치완료</button>`;
+  if(e.status==='출고'||e.status==='설치')acts+=`<button class="btn btn-sm" style="background:#fef3c7;border-color:#fde68a;color:#b45309;font-weight:700" onclick="assetEvent('${esn}','AS')">🛠 AS 접수</button>`;
+  if(e.status==='AS')acts+=`<button class="btn btn-sm" style="background:#dcfce7;border-color:#bbf7d0;color:#15803d;font-weight:700" onclick="assetEvent('${esn}','설치')">✓ AS 완료</button>`;
+  if(e.status!=='재고'&&e.status!=='반품')acts+=`<button class="btn btn-sm" style="background:#fee2e2;border-color:#fecaca;color:#b91c1c;font-weight:700" onclick="assetEvent('${esn}','반품')">↩ 반품</button>`;
+  acts+=`<button class="btn btn-sm" onclick="closeDw();mAsset('${esn}')"><i class="bi bi-pencil"></i> 수정</button>`;
+  openDw('장비', '🔖 '+esc(e.serial),
+    `<div class="dwcard"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="muted" style="font-size:11px">품목</div><b style="font-size:17px;color:var(--ink)">${esc(e.item)}</b></div><span class="chip" style="background:${col}1a;color:${col};font-weight:700;font-size:12px">${esc(e.status)}</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;font-size:12.5px">
+      <div><div class="muted" style="font-size:10.5px">현재 위치</div><b>${e.status==='재고'?'🏭 창고':(e.client?'🏥 '+esc(e.client):'-')}</b></div>
+      <div><div class="muted" style="font-size:10.5px">입고일</div><b>${e.inDate||'-'}</b></div>
+      <div><div class="muted" style="font-size:10.5px">입고 참조</div><b>${esc(e.shipRef)||'-'}</b></div>
+      <div><div class="muted" style="font-size:10.5px">출고일</div><b>${e.outDate||'-'}</b></div></div>
+    ${e.note?'<div style="margin-top:9px;font-size:12px;color:var(--body)">📝 '+esc(e.note)+'</div>':''}
+    <div style="display:flex;gap:6px;margin-top:13px;flex-wrap:wrap">${acts}</div></div>
+    <div class="dwcard"><div class="sect"><span>🕓 장비 생애 이력</span></div>${tl}</div>`);
+}
+function assetEvent(id,st){
+  const e=(D.equipment||[]).find(x=>x.id===id);if(!e)return;
+  const detail=prompt(st+' 내용/메모 (선택)','');
+  if(detail===null)return;
+  e.status=st;if(st==='재고')e.client='';(e.events=e.events||[]).push({date:today(),type:st,detail:detail||''});
+  saveAll(st+' 처리됨').then(()=>{openAsset(id);});
+}
+function mAsset(id){
+  const e=id?(D.equipment||[]).find(x=>x.id===id):{serial:'',item:'',status:'재고',client:'',note:''};if(id&&!e)return;
+  const itemOpts=(D.items||[]).map(i=>`<option ${e.item===i.name?'selected':''}>${esc(i.name)}</option>`).join('');
+  const stOpts=['재고','출고','설치','AS','반품'].map(s=>`<option value="${s}" ${e.status===s?'selected':''}>${s}</option>`).join('');
+  const cliOpts='<option value="">-</option>'+clientList().map(c=>`<option ${e.client===c?'selected':''}>${esc(c)}</option>`).join('');
+  openM(id?'장비 수정':'장비 등록',
+    `<div class="fr"><div class="fld"><label>시리얼</label><input id="f-serial" value="${esc(e.serial||'')}"></div><div class="fld"><label>품목</label><select id="f-item"><option value="">—</option>${itemOpts}</select></div></div>
+    <div class="fr"><div class="fld"><label>상태</label><select id="f-status">${stOpts}</select></div><div class="fld"><label>고객사</label><select id="f-client">${cliOpts}</select></div></div>
+    <div class="fld"><label>메모</label><input id="f-note" value="${esc(e.note||'')}"></div>`,
+    async()=>{const g=x=>document.getElementById(x).value;
+      const rec=Object.assign({},e,{id:id||uid(),serial:g('f-serial').trim(),item:g('f-item'),status:g('f-status'),client:g('f-client'),note:g('f-note').trim()});
+      if(!rec.serial){toast('시리얼을 입력하세요');return false;}
+      if(!rec.inDate)rec.inDate=today();
+      if(!rec.events||!rec.events.length)rec.events=[{date:rec.inDate,type:'입고',detail:'수기 등록'}];
+      const i=(D.equipment||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.equipment[i]=rec;else D.equipment.push(rec);return await saveAll();},
+    id?async()=>{D.equipment=D.equipment.filter(x=>x.id!==id);await saveAll('삭제됨');}:null);
 }
 
 // ── 자금 관리 (계좌별) ──
