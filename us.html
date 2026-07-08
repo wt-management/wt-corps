@@ -1339,8 +1339,8 @@ function _addrPick(i){
   var box=document.getElementById('addr-res');if(box){box.style.display='none';box.innerHTML='';}
 }
 function mClient(id){const c=id?(D.clients||[]).find(x=>x.id===id):{name:'',contact:'',phone:'',email:'',region:'',grade:'B',status:'활성',memo:'',address:'',lat:'',lng:''};
-  openM(id?'고객사 수정':'고객사 등록',
-    `<div class="fld"><label>고객사명</label><input id="f-name" value="${esc(c.name)}"></div>
+  openM(id?'고객사 수정':'고객사 등록',dlist()+
+    `<div class="fld"><label>고객사명</label><input id="f-name" list="dl-clients" value="${esc(c.name)}"></div>
     <div class="fr"><div class="fld"><label>담당자</label><input id="f-contact" value="${esc(c.contact||'')}"></div><div class="fld"><label>전화</label><input id="f-phone" value="${esc(c.phone||'')}"></div></div>
     <div class="fr"><div class="fld"><label>이메일</label><input id="f-email" value="${esc(c.email||'')}"></div><div class="fld"><label>지역(주/도시)</label><input id="f-region" value="${esc(c.region||'')}"></div></div>
     <div class="fld"><label>${jt('주소 검색 (미국·전세계)','Address search (US & worldwide)')}</label><input id="f-addrsearch" autocomplete="off" oninput="_addrSearch(this.value)" placeholder="${jt('예: 225 Bush St San Francisco','e.g. 225 Bush St San Francisco')}"><div id="addr-res" style="display:none;border:1px solid var(--line);border-radius:8px;margin-top:3px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.1);max-height:230px;overflow:auto"></div><div class="muted" style="font-size:10.5px;margin-top:3px">${jt('OpenStreetMap 기반 · 선택 후 아래에서 수정 가능','Powered by OpenStreetMap · editable below')}</div></div>
