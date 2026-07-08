@@ -285,7 +285,7 @@ function vDash(){
   const gcol=achv>=100?'#4ade80':achv>=70?'#60a5fa':'#fbbf24';
   const hero=`<div class="hero">
     <div><div class="hl">${yr}년 누적 매출 (매출인식 기준)</div><div class="hv">${fm(ySale)}</div>
-      <div class="hs">${fkrw(ySale)} · 이번달 ${fm(mSale)} · 월평균 ${fm(mo?ySale/mo:0)}</div>
+      <div class="hs">${fkrw(ySale)} · 이번달 ${fm((D.sales||[]).filter(s=>ym(s.date)===refYm()).reduce((a,s)=>a+(+s.amt||0),0))} · 월평균 ${fm(mo?ySale/mo:0)}</div>
       <div class="hs" style="margin-top:8px">목표 달성률 <b style="color:${gcol}">${yTgt?achv.toFixed(1)+'%':'목표 미설정'}</b>${yTgt?' <span style="color:#64748b">(목표 '+fm(yTgt)+')</span>':''}</div>
       <div class="gauge"><i style="width:${Math.min(100,achv)}%;background:${gcol}"></i></div></div>
     <div class="divv"><div class="hl">수금 (입금 기준 · 참고)</div><div class="hv" style="font-size:24px">${fm(yPay)}</div>
@@ -494,7 +494,7 @@ function openClient(name){
   const sale=sales.reduce((a,s)=>a+(+s.amt||0),0),col=sales.reduce((a,s)=>a+colSum(s),0),out=sales.reduce((a,s)=>a+outAmt(s),0);
   const sHtml=sales.length?sales.map(s=>`<div onclick="dwSale('${s.id}')" style="display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="muted">${s.date}</span><span style="flex:1">${esc(s.product)||'매출'}</span><b>${fm(s.amt)}</b>${outAmt(s)>0?`<span class="chip c-red">미수 ${fmS(outAmt(s))}</span>`:'<span class="chip c-green">완납</span>'}</div>`).join(''):'<div class="empty">매출 없음</div>';
   const oHtml=orders.length?orders.map(o=>`<div onclick="closeDw();mOrder('${o.id}')" style="display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="muted">${o.date}</span><span style="flex:1">${esc(o.product)||'-'}</span><b>${fm(o.amt)}</b>${ordChip(o.status)}</div>`).join(''):'<div class="empty">수주 없음</div>';
-  openDw('거래처',name,
+  openDw('거래처',esc(name),
     `<div class="dwcard"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px;font-size:13px;text-align:center">
       <div><div class="muted" style="font-size:11px">누적 매출</div><b style="font-size:16px">${fm(sale)}</b></div>
       <div><div class="muted" style="font-size:11px">수금</div><b style="font-size:16px;color:var(--ok)">${fm(col)}</b></div>

@@ -239,6 +239,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
       <a data-v="inv"><span class="ico">📦</span><span class="lbl">물류 · 재고</span></a>
       <a data-v="asset"><span class="ico">🔧</span><span class="lbl">장비 이력</span></a>
       <a data-v="funds"><span class="ico">🏦</span><span class="lbl">자금 관리</span></a>
+      <a data-v="hq"><span class="ico">🏢</span><span class="lbl">본사 관리</span></a>
     </nav>
     <div style="padding:2px 12px 4px;display:flex;gap:5px">
       <button id="lang-ko" onclick="setLang('ko')" style="flex:1;background:rgba(255,255,255,.12);border:1px solid #334155;border-radius:8px;padding:6px 0;color:#fff;font-size:11.5px;font-weight:700;cursor:pointer">한국어</button>
@@ -478,7 +479,7 @@ function fundsBal(){return (D.accounts||[]).reduce((a,x)=>a+fundsBalAcc(x.name),
 function itemQty(name){const it=(D.items||[]).find(i=>i.name===name);let q=it?(+it.qty0||0):0;(D.moves||[]).forEach(m=>{if(m.item===name)q+=(m.type==='입고'?1:-1)*(+m.qty||0);});return q;}
 
 // ── 라우팅 ──
-const VIEWS_KEYS=['dash','report','perf','sched','pipe','accounts','acts','sales','ar','orders','clients','inv','asset','funds'];
+const VIEWS_KEYS=['dash','report','perf','sched','pipe','accounts','acts','sales','ar','orders','clients','inv','asset','funds','hq'];
 function setView(v,noPush){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);if(!noPush){try{history.pushState({v:v},'','#'+v);}catch(e){}}}
 window.addEventListener('popstate',function(){var v=(location.hash||'').replace('#','');setView(VIEWS_KEYS.indexOf(v)>=0?v:'dash',true);});
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('mob-ov').classList.toggle('show');}
@@ -592,7 +593,7 @@ function vDash(){
     +`<div class="mcards">
       <div class="mcard" onclick="setView('sales')">
         <div class="mtop"><span class="mico" style="background:#e0e7ff;color:#4338ca">💵</span><span class="mlbl">${jt('이번달 매출','Revenue (MTD)')}</span></div>
-        <div class="mval">${fm(mSale)}</div>
+        <div class="mval">${fm(sm[mo]||0)}</div>
         <div class="msub">${momG!=null?`<span class="mtag" style="background:${momG>=0?'#dcfce7':'#fee2e2'};color:${momG>=0?'#15803d':'#b91c1c'}">${momG>=0?'▲':'▼'} ${Math.abs(momG).toFixed(0)}%</span> ${jt('전월비','vs last mo.')}`:jt('전월 데이터 없음','no prior month')}</div></div>
       <div class="mcard" onclick="setView('sales')">
         <div class="mtop"><span class="mico" style="background:#dcfce7;color:#15803d">💰</span><span class="mlbl">${jt('수금률 (누적)','Collection Rate')}</span></div>
@@ -838,7 +839,7 @@ function openProduct(name){
   var byCl={};sales.forEach(function(s){byCl[s.client]=(byCl[s.client]||0)+(+s.amt||0);});
   var clArr=Object.entries(byCl).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
   var sHtml=sales.length?sales.slice(0,12).map(function(s){return `<div onclick="closeDw();dwSale('${s.id}')" style="display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="muted">${s.date}</span><span style="flex:1">${esc(s.client)}</span><b>${fm(s.amt)}</b>${outAmt(s)>0?`<span class="chip c-red">${jt('미수','AR')}</span>`:''}</div>`;}).join(''):'<div class="empty">'+jt('매출 없음','No sales')+'</div>';
-  openDw(jt('제품','Product'), name,
+  openDw(jt('제품','Product'), esc(name),
     `<div class="dwcard"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px;text-align:center">
       <div><div class="muted" style="font-size:11px">${jt('누적 매출','Total Revenue')}</div><b style="font-size:16px">${fm(rev)}</b></div>
       <div><div class="muted" style="font-size:11px">${jt('판매 수량','Units Sold')}</div><b style="font-size:16px">${qty.toLocaleString()}</b></div>
@@ -855,7 +856,7 @@ function openClient(name){
   const sale=sales.reduce((a,s)=>a+(+s.amt||0),0),col=sales.reduce((a,s)=>a+colSum(s),0),out=sales.reduce((a,s)=>a+outAmt(s),0);
   const sHtml=sales.length?sales.map(s=>`<div onclick="dwSale('${s.id}')" style="display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="muted">${s.date}</span><span style="flex:1">${esc(s.product)||'매출'}</span><b>${fm(s.amt)}</b>${outAmt(s)>0?`<span class="chip c-red">미수 ${fmS(outAmt(s))}</span>`:'<span class="chip c-green">완납</span>'}</div>`).join(''):'<div class="empty">매출 없음</div>';
   const oHtml=orders.length?orders.map(o=>`<div onclick="closeDw();mOrder('${o.id}')" style="display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="muted">${o.date}</span><span style="flex:1">${esc(o.product)||'-'}</span><b>${fm(o.amt)}</b>${ordChip(o.status)}</div>`).join(''):'<div class="empty">수주 없음</div>';
-  openDw('거래처',name,
+  openDw('거래처',esc(name),
     `<div class="dwcard"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px;font-size:13px;text-align:center">
       <div><div class="muted" style="font-size:11px">누적 매출</div><b style="font-size:16px">${fm(sale)}</b></div>
       <div><div class="muted" style="font-size:11px">수금</div><b style="font-size:16px;color:var(--ok)">${fm(col)}</b></div>
@@ -1624,7 +1625,7 @@ function openDeal(id){
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px"><input type="checkbox" ${t.done?'checked':''} onclick="toggleTaskDrawer('${t.id}','${id}')" style="cursor:pointer"><span style="flex:1;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${trUser(t.title)}</span>${t.date?`<span class="muted" style="font-size:11px;${late?'color:var(--bad);font-weight:700':''}">${t.date}${late?' ⚠':''}</span>`:''}<button class="btn btn-sm" style="color:var(--bad);padding:2px 7px" onclick="delTaskDrawer('${t.id}','${id}')">×</button></div>`;}).join(''):`<div class="empty" style="padding:8px">${jt('등록된 할일이 없습니다','No tasks yet')}</div>`;
   const actHtml=acts.length?acts.map(a=>`<div style="padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px"><span class="chip ${ACT_T[a.type]||'c-gray'}">${jt(a.type,EN[a.type]||a.type)}</span> <span class="muted">${a.date}</span> ${trUser(a.content||'')}${a.next&&!a.doneNext?` <span class="chip ${a.nextDate&&a.nextDate<today()?'c-red':'c-amber'}">→ ${trUser(a.next)}</span>`:''}</div>`).join(''):`<div class="empty" style="padding:8px">${jt('활동 기록 없음','No activities')}</div>`;
   const canWin=(d.stage==='협의중'||d.stage==='견적발송');
-  openDw(jt('딜','Deal')+' · '+jt(d.stage,EN[d.stage]||d.stage), d.client,
+  openDw(jt('딜','Deal')+' · '+jt(d.stage,EN[d.stage]||d.stage), esc(d.client),
     `<div class="dwcard"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
       <div><div class="muted" style="font-size:11px">${jt('제품','Product')}</div><b style="color:var(--ink)">${esc(d.product)||'-'}${d.qty?' × '+d.qty:''}</b></div>
       <div><div class="muted" style="font-size:11px">${jt('예상 금액','Amount')}</div><b style="color:var(--ink)">${fm(d.amt)}</b> <span class="muted" style="font-size:11px">${fkrw(d.amt)}</span></div>
