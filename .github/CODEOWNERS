@@ -1,9 +1,9 @@
 # CODEOWNERS — 파일 경로별 담당자. 해당 파일을 바꾸는 PR에 자동으로 리뷰어가 지정된다.
-# 공용·민감 파일(런처/태국/CI/규칙)은 오너(본사) 영역.
+# 공용·민감 파일(런처/CI/규칙)은 오너(본사) 영역.
 /index.html    @PMW0406
-/th.html       @PMW0406
 /.github/      @PMW0406
 /CLAUDE.md     @PMW0406
 
-# 미국법인 사이트 — 본사 담당자
+# 미국·태국 법인 사이트 — 담당자 Megan
 /us.html       @Megann-kim
+/th.html       @Megann-kim
