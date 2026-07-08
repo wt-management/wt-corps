@@ -250,7 +250,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
     <div class="switch-wrap"><button class="switch-btn" onclick="document.getElementById('swdd').classList.toggle('open')"><i class="bi bi-grid-3x3-gap"></i><span style="flex:1;text-align:left;font-weight:600">사이트 이동</span><i class="bi bi-chevron-up" style="font-size:10px"></i></button>
       <div class="switch-dd" id="swdd">
         <div class="sw-item" onclick="goSite('https://wt-management.github.io/wontech/total.html')"><span class="sw-badge" style="background:#4f46e5">종합</span><span style="flex:1">전사 종합 경영현황</span></div>
-        <div class="sw-item" onclick="goSite('https://wt-management.github.io/wontech/')"><span class="sw-badge" style="background:#0891b2">KR</span><span style="flex:1">한국 영업</span></div>
+        <div class="sw-item" onclick="goSite('https://wt-management.github.io/wontech/','&app=korea')"><span class="sw-badge" style="background:#0891b2">KR</span><span style="flex:1">한국 영업</span></div>
         <div class="sw-item" onclick="goSite('https://wt-management.github.io/wontech-intl/')"><span class="sw-badge" style="background:#0d9488">INT</span><span style="flex:1">해외 영업</span></div>
         <div class="sw-item" onclick="goSite('https://wt-management.github.io/wtj-management/')"><span class="sw-badge" style="background:#f59e0b">JP</span><span style="flex:1">일본법인 관리</span></div>
         <div class="sw-item cur"><span class="sw-badge" style="background:#1e3a8a">US</span><span style="flex:1">미국법인 관리</span><i class="bi bi-check2"></i></div>
@@ -333,7 +333,7 @@ async function doLogout(){await _sb.auth.signOut();Object.keys(localStorage).fil
   ['mousemove','mousedown','keydown','touchstart','scroll','click','wheel'].forEach(function(ev){document.addEventListener(ev,_arm,{passive:true,capture:true});});
   _arm();})();
 async function changePw(){const np=prompt('새 비밀번호 (6자 이상)');if(np===null)return;if((np||'').length<6){alert('6자 이상이어야 합니다.');return;}if(prompt('확인을 위해 다시 입력하세요')!==np){alert('일치하지 않습니다.');return;}const r=await _sb.auth.updateUser({password:np});if(r.error){alert('변경 실패: '+r.error.message);return;}alert('비밀번호가 변경되었습니다.');}
-async function goSite(url){try{const{data:{session:s}}=await _sb.auth.getSession();if(s&&url.indexOf('#')<0)url+='#at='+encodeURIComponent(s.access_token)+'&rt='+encodeURIComponent(s.refresh_token);}catch(e){}location.href=url;}
+async function goSite(url,extra){try{const{data:{session:s}}=await _sb.auth.getSession();if(s&&url.indexOf('#')<0)url+='#at='+encodeURIComponent(s.access_token)+'&rt='+encodeURIComponent(s.refresh_token)+(extra||'');else if(extra)url+=(url.indexOf('#')<0?'#':'&')+String(extra).replace(/^[#&]+/,'');}catch(e){}location.href=url;}
 document.addEventListener('click',e=>{const w=document.querySelector('.switch-wrap');if(w&&!w.contains(e.target))document.getElementById('swdd').classList.remove('open');});
 
 // ── 언어 (KO/EN) ──
