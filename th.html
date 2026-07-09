@@ -609,7 +609,7 @@ function vAsset(){
   const stChips=['','재고','출고','설치','AS','반품'].map(s=>{const on=fAssetSt===s;const c=s?ASSET_ST[s]:'#4f46e5';return `<button onclick="setAssetF('st','${s}')" style="padding:5px 12px;border-radius:999px;border:1px solid ${on?c:'var(--line)'};background:${on?c:'#fff'};color:${on?'#fff':'var(--body)'};font-size:12px;font-weight:${on?'700':'500'};cursor:pointer">${s===''?'전체':s}</button>`;}).join('');
   const itemOpts='<option value="">전체 품목</option>'+itemsU.map(i=>`<option ${fAssetItem===i?'selected':''}>${esc(i)}</option>`).join('');
   return head('🔧 장비 이력', '시리얼 단위 장비 추적 · 입고 → 출고 → 고객사 · 행 클릭 → 전체 이력',
-    `<button class="btn btn-sm" onclick="mAsset()">+ 장비</button>`)
+    `<button class="btn btn-sm" onclick="mAssetImport()"><i class="bi bi-file-earmark-spreadsheet"></i> 엑셀로 장비 등록</button><button class="btn btn-sm" onclick="mAsset()">+ 장비</button>`)
     +`<div class="grid kpis" style="grid-template-columns:repeat(4,1fr)">
       <div class="kpi"><div class="v">${all.length}</div><div class="l">총 장비</div></div>
       <div class="kpi"><div class="v">${inStock}</div><div class="l">창고 재고</div></div>
@@ -664,6 +664,83 @@ function mAsset(id){
       if(!rec.events||!rec.events.length)rec.events=[{date:rec.inDate,type:'입고',detail:'수기 등록'}];
       const i=(D.equipment||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.equipment[i]=rec;else D.equipment.push(rec);return await saveAll();},
     id?async()=>{D.equipment=D.equipment.filter(x=>x.id!==id);await saveAll('삭제됨');}:null);
+}
+function xlsxTemplateAsset(){
+  const ws=XLSX.utils.aoa_to_sheet([['품목명','시리얼','입고일','출고일','고객사','메모'],['예: Veincare','B4VCR302-201','2024-01-16','2024-01-24','','사무실 보관']]);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'장비');
+  XLSX.writeFile(wb,'장비_등록_템플릿.xlsx');
+}
+function xlsxDateStr(v){
+  if(v==null||v==='')return '';
+  if(v instanceof Date)return v.toISOString().slice(0,10);
+  if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);if(d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');}
+  const m=String(v).trim().match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+  return m?(m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0')):String(v).trim();
+}
+let _impAsset=null;
+function mAssetImport(){
+  _impAsset=null;
+  openM('엑셀로 장비 일괄 등록',
+    `<div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">권장 컬럼: 품목명·시리얼·입고일·출고일·고객사·메모(헤더명은 유사한 표현도 자동 인식). 헤더가 다르면 왼쪽부터 품목명·수량·지사·시리얼·입고일·출고일·메모 순서의 기존 대장 형식도 인식합니다.<br>같은 시리얼이 이미 있으면 내용을 덮어씁니다. 출고일이 있으면 상태를 '출고'(고객사 있으면 '설치')로, 없으면 '재고'로 자동 판단하니 저장 후 개별 확인해 주세요.</div>
+    <button class="btn btn-sm" type="button" onclick="xlsxTemplateAsset()"><i class="bi bi-download"></i> 템플릿 다운로드</button>
+    <div class="fld" style="margin-top:12px"><label>엑셀 파일 (.xlsx / .csv)</label><input type="file" id="f-xlsx-asset" accept=".xlsx,.xls,.csv" onchange="handleXlsxAsset(event)"></div>
+    <div id="xlsx-asset-preview" class="muted" style="font-size:12.5px;margin-top:8px"></div>`,
+    async()=>{
+      if(!_impAsset||!_impAsset.length){toast('엑셀 파일을 선택하세요');return false;}
+      _impAsset.forEach(rec=>{
+        const i=(D.equipment||[]).findIndex(x=>x.serial===rec.serial);
+        const events=[{date:rec.inDate||today(),type:'입고',detail:'엑셀 일괄 등록'}];
+        if(rec.outDate)events.push({date:rec.outDate,type:rec.status,detail:rec.client||''});
+        if(i>=0)D.equipment[i]=Object.assign({},D.equipment[i],rec,{events});
+        else D.equipment.push(Object.assign({id:uid()},rec,{events}));
+      });
+      const n=_impAsset.length;_impAsset=null;return await saveAll(n+'건 등록됨');},
+    null);
+}
+function handleXlsxAsset(e){
+  const file=e.target.files[0];const prev=document.getElementById('xlsx-asset-preview');
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const grid=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(!grid.length){_impAsset=null;if(prev)prev.textContent='빈 파일입니다';return;}
+      const norm=k=>String(k||'').replace(/\s/g,'');
+      const header=grid[0].map(norm);
+      const findCol=names=>header.findIndex(h=>names.some(n=>h.indexOf(n)>=0));
+      let iItem=findCol(['품목명','품목','name','item']);
+      let iSerial=findCol(['시리얼번호','시리얼','serial']);
+      let iIn=findCol(['입고일','입고','indate','등록일']);
+      let iOut=findCol(['출고일','출고','outdate']);
+      let iClient=findCol(['고객사','거래처','납품처','customer','client']);
+      let iNote=findCol(['메모','비고','note','memo']);
+      if(iItem<0||iSerial<0){ // 헤더 인식 실패 → 기존 대장 형식(품목명·수량·지사·시리얼·입고일·출고일·메모) 위치로 가정
+        iItem=0;iSerial=3;iIn=4;iOut=5;iClient=-1;iNote=6;
+      }
+      const NON_CLIENT=['보관','전시','데모','사무실','창고'];
+      const rows=grid.slice(1);
+      const items=rows.map(r=>{
+        const serial=String(r[iSerial]??'').trim();
+        if(!serial)return null;
+        const item=String(r[iItem]??'').trim();
+        const inDate=iIn>=0?xlsxDateStr(r[iIn]):'';
+        const outDate=iOut>=0?xlsxDateStr(r[iOut]):'';
+        let client=iClient>=0?String(r[iClient]??'').trim():'';
+        let note=iNote>=0?String(r[iNote]??'').trim():'';
+        if(!client&&note){const isGeneric=NON_CLIENT.some(k=>note.indexOf(k)>=0);if(!isGeneric){client=note;note='';}}
+        const status=outDate?(client?'설치':'출고'):'재고';
+        return {serial,item,inDate,outDate,client,note,status};
+      }).filter(Boolean);
+      _impAsset=items.length?items:null;
+      if(prev)prev.textContent=items.length?(items.length+'건 인식됨 (재고 '+items.filter(x=>x.status==='재고').length+' · 출고/설치 '+items.filter(x=>x.status!=='재고').length+')'):'인식된 장비가 없습니다 — 시리얼 컬럼 확인';
+    }catch(err){
+      _impAsset=null;
+      if(prev)prev.textContent='파일을 읽을 수 없습니다: '+err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // ── 자금 관리 (계좌별) ──
