@@ -71,7 +71,9 @@ button{font-family:inherit;cursor:pointer}input,select,textarea{font-family:inhe
 .seg button:hover:not(.on){color:var(--ink)}
 .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(16,24,40,.12)}
 .seg button i{font-size:13px;opacity:.85}
-.statcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 17px;box-shadow:var(--sh)}
+.statcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 17px;box-shadow:var(--sh);transition:border-color .15s,transform .15s,box-shadow .15s}
+.statcard[onclick]{cursor:pointer}.statcard[onclick]:hover{border-color:#c7d2fe;transform:translateY(-1px)}
+.statcard.on{box-shadow:0 0 0 2px var(--brand)}
 .statcard .sv{font-size:26px;font-weight:800;color:var(--ink);line-height:1}.statcard .sl{font-size:12px;color:var(--muted);margin-top:7px}
 .tl{position:relative}
 .tlrow{display:flex;gap:0;align-items:stretch}
@@ -461,6 +463,7 @@ function fkrw(n){const w=(Number(n)||0)*(D.rate||0);if(!w)return'';const a=Math.
 function monthsOf(arr,f){const s=new Set(arr.map(x=>ym(x[f||'date'])).filter(Boolean));return[...s].sort().reverse();}
 function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000);}
 function pct(n,d){return d>0?n/d*100:0;}
+function barPct(v,mx){return mx>0?Math.max(4,Math.pow(Math.max(0,v)/mx,0.55)*100):4;}
 function ordChip(s){return `<span class="chip ${ORD_ST[s]||'c-gray'}">${esc(s)}</span>`;}
 function clientList(){return [...new Set([].concat((D.sales||[]).map(s=>s.client),(D.orders||[]).map(o=>o.client),(D.deals||[]).map(d=>d.client),(D.clients||[]).map(c=>c.name)).filter(Boolean))].sort();}
 function dlist(){return '<datalist id="dl-clients">'+clientList().map(c=>'<option value="'+esc(c)+'">').join('')+'</datalist>';}
@@ -565,9 +568,9 @@ function vDash(){
   // 월별 콤보(매출 vs 수금 + 목표선)
   const mx=Math.max(1,...Array.from({length:12},(_,i)=>Math.max(sm[i+1]||0,pm[i+1]||0,tm[i+1]||0)));
   const combo=Array.from({length:12},(_,i)=>{const m=i+1,sv=sm[m]||0,pv=pm[m]||0,tv=tm[m]||0;
-    return `<div class="mcol" style="cursor:pointer" onclick="PQ={from:'${yr}-${String(m).padStart(2,'0')}-01',to:_mEnd('${yr}-${String(m).padStart(2,'0')}'),label:'${yr}년 ${m}월',preset:'custom'};setView('report')" title="${jt('클릭 → 이 달 리포트','Click → month report')}"><div class="bars">${tv?`<div class="tgt" style="bottom:${tv/mx*100}%"></div>`:''}
-      <div class="b1" style="height:${sv/mx*100}%" title="${m}월 매출 ${fm(sv)}"></div>
-      <div class="b2" style="height:${pv/mx*100}%" title="${m}월 수금 ${fm(pv)}"></div></div>
+    return `<div class="mcol" style="cursor:pointer" onclick="PQ={from:'${yr}-${String(m).padStart(2,'0')}-01',to:_mEnd('${yr}-${String(m).padStart(2,'0')}'),label:'${yr}년 ${m}월',preset:'custom'};setView('report')" title="${jt('클릭 → 이 달 리포트','Click → month report')}"><div class="bars">${tv?`<div class="tgt" style="bottom:${barPct(tv,mx)}%"></div>`:''}
+      <div class="b1" style="height:${sv?barPct(sv,mx):0}%" title="${m}월 매출 ${fm(sv)}"></div>
+      <div class="b2" style="height:${pv?barPct(pv,mx):0}%" title="${m}월 수금 ${fm(pv)}"></div></div>
       <div class="mv">${sv?fmS(sv):''}</div><div class="ml">${m}월</div></div>`;}).join('');
   // 미수 aging + Top 미수 거래처
   const ag={'30내':0,'30+':0,'60+':0,'90+':0};
@@ -641,30 +644,30 @@ function mTargets(){
 }
 
 // ── 매출 · 수금 ──
-let fSalesYm='',fOutOnly=false,fSalesQ='';
+let fSalesYm='',fSalesStatus='',fSalesQ='';
 function vSales(){
   var yms=monthsOf(D.sales||[]);
   var L=(D.sales||[]).slice();
   if(fSalesYm)L=L.filter(s=>ym(s.date)===fSalesYm);
-  if(fOutOnly)L=L.filter(s=>outAmt(s)>0);
+  if(fSalesStatus==='unpaid')L=L.filter(s=>outAmt(s)>0);
+  if(fSalesStatus==='paid')L=L.filter(s=>outAmt(s)<=0);
   if(fSalesQ)L=L.filter(s=>((s.client||'')+' '+(s.product||'')).toLowerCase().indexOf(fSalesQ.toLowerCase())>=0);
   L.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   var tot=L.reduce((a,s)=>a+(+s.amt||0),0), col=L.reduce((a,s)=>a+colSum(s),0), out=L.reduce((a,s)=>a+outAmt(s),0);
   var m6=[];{var n=new Date();for(var i=5;i>=0;i--){var d=new Date(n.getFullYear(),n.getMonth()-i,1);m6.push(d.toISOString().slice(0,7));}}
   var mm={},mmc={};(D.sales||[]).forEach(function(s){var k=ym(s.date);if(m6.indexOf(k)>=0){mm[k]=(mm[k]||0)+(+s.amt||0);(s.collections||[]).forEach(function(c){if(ym(c.date)===k)mmc[k]=(mmc[k]||0)+(+c.amt||0);});}});
   var mx=Math.max(1,...m6.map(k=>Math.max(mm[k]||0,mmc[k]||0)));
-  var trend='<div style="display:flex;gap:8px;align-items:flex-end;height:70px">'+m6.map(function(k){var hs=(mm[k]||0)/mx*100,hc=(mmc[k]||0)/mx*100;return '<div style="flex:1;text-align:center"><div style="height:56px;display:flex;align-items:flex-end;justify-content:center;gap:2px"><div title="'+k+' '+jt('매출','rev')+' '+fm(mm[k]||0)+'" style="width:40%;background:'+(k===curYm()?'var(--brand)':'#c7d2fe')+';height:'+Math.max(3,hs)+'%;border-radius:3px 3px 0 0"></div><div title="'+k+' '+jt('수금','col')+' '+fm(mmc[k]||0)+'" style="width:40%;background:#bbf7d0;height:'+Math.max(3,hc)+'%;border-radius:3px 3px 0 0"></div></div><div style="font-size:9.5px;color:var(--muted);margin-top:3px">'+(+k.slice(5))+jt('월','')+'</div></div>';}).join('')+'</div>';
+  var trend='<div style="display:flex;gap:8px;align-items:flex-end;height:70px">'+m6.map(function(k){var hs=barPct(mm[k]||0,mx),hc=barPct(mmc[k]||0,mx);return '<div style="flex:1;text-align:center"><div style="height:56px;display:flex;align-items:flex-end;justify-content:center;gap:2px"><div title="'+k+' '+jt('매출','rev')+' '+fm(mm[k]||0)+'" style="width:40%;background:'+(k===curYm()?'var(--brand)':'#c7d2fe')+';height:'+hs+'%;border-radius:3px 3px 0 0"></div><div title="'+k+' '+jt('수금','col')+' '+fm(mmc[k]||0)+'" style="width:40%;background:#bbf7d0;height:'+hc+'%;border-radius:3px 3px 0 0"></div></div><div style="font-size:9.5px;color:var(--muted);margin-top:3px">'+(+k.slice(5))+jt('월','')+'</div></div>';}).join('')+'</div>';
   var rows=L.length?L.map(function(s){var o=outAmt(s);var b=agingBucket(s);
     return `<tr onclick="dwSale('${s.id}')"><td class="l">${s.date}</td><td class="l" onclick="event.stopPropagation();openClient('${esc(s.client).replace(/'/g,'&#39;')}')" style="cursor:pointer"><b style="color:var(--ink);border-bottom:1px dotted #cbd5e1">${esc(s.client)}</b></td><td class="l" onclick="event.stopPropagation();openProduct('${esc(s.product).replace(/'/g,'&#39;')}')" style="cursor:pointer">${esc(s.product)||'-'}</td><td>${s.qty||'-'}</td><td><b>${fm(s.amt)}</b></td><td style="color:var(--ok)">${colSum(s)?fm(colSum(s)):'-'}</td><td>${o>0?`<b style="color:var(--bad)">${fm(o)}</b>${b&&b!=='30내'?` <span class="chip c-${b==='90+'?'red':'amber'}">${b}</span>`:''}`:'<span class="chip c-green">'+jt('완납','Paid')+'</span>'}</td><td>${o>0?`<button class="btn btn-sm" onclick="event.stopPropagation();quickCollect('${s.id}')">＋${jt('수금','collect')}</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">'+jt('매출 기록이 없습니다','No sales yet')+'</td></tr>';
   return head('🧾 '+jt('매출 · 수금','Sales & Collections'), jt('매출인식 기준 · 행 클릭 → 수금내역 · ＋수금 = 잔액 전액 오늘','Recognition basis · row → collections · +collect = full today'),
     `<input class="sel" placeholder="🔍 ${jt('거래처·제품','client·product')}" value="${esc(fSalesQ)}" oninput="fSalesQ=this.value" onkeydown="if(event.key==='Enter')render()" style="width:150px">`
     +`<select class="sel" onchange="fSalesYm=this.value;render()"><option value="">${jt('전체 기간','All periods')}</option>${yms.map(m=>`<option ${fSalesYm===m?'selected':''}>${m}</option>`).join('')}</select>`
-    +`<button class="btn btn-sm ${fOutOnly?'btn-primary':''}" onclick="fOutOnly=!fOutOnly;render()">${jt('미수만','AR only')}</button>`
     +`<button class="btn btn-sm" onclick="csvSales()"><i class="bi bi-download"></i> CSV</button><button class="btn btn-primary" onclick="mSale()">+ ${jt('매출','Sale')}</button>`)
     +`<div class="grid actkpi" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">
-      <div class="statcard" style="border-top:3px solid #4f46e5"><div class="sv">${fmS(tot)}</div><div class="sl">${fSalesYm||jt('전체','All')} ${jt('매출','sales')}</div></div>
-      <div class="statcard" style="border-top:3px solid #16a34a"><div class="sv" style="color:var(--ok)">${fmS(col)}</div><div class="sl">${jt('수금','Collected')}</div></div>
-      <div class="statcard" style="border-top:3px solid #dc2626"><div class="sv" style="color:${out?'var(--bad)':'var(--ink)'}">${fmS(out)}</div><div class="sl">${jt('미수','AR')}</div></div>
+      <div class="statcard${fSalesStatus===''?' on':''}" style="border-top:3px solid #4f46e5" onclick="fSalesStatus='';render()"><div class="sv">${fmS(tot)}</div><div class="sl">${fSalesYm||jt('전체','All')} ${jt('매출','sales')} · ${jt('클릭→전체','click→all')}</div></div>
+      <div class="statcard${fSalesStatus==='paid'?' on':''}" style="border-top:3px solid #16a34a" onclick="fSalesStatus=fSalesStatus==='paid'?'':'paid';render()"><div class="sv" style="color:var(--ok)">${fmS(col)}</div><div class="sl">${jt('수금','Collected')} · ${jt('클릭→완납만','click→paid only')}</div></div>
+      <div class="statcard${fSalesStatus==='unpaid'?' on':''}" style="border-top:3px solid #dc2626" onclick="fSalesStatus=fSalesStatus==='unpaid'?'':'unpaid';render()"><div class="sv" style="color:${out?'var(--bad)':'var(--ink)'}">${fmS(out)}</div><div class="sl">${jt('미수','AR')} · ${jt('클릭→미수만','click→AR only')}</div></div>
       <div class="statcard" style="border-top:3px solid #64748b"><div class="sv">${L.length}</div><div class="sl">${jt('건수','Count')}</div></div></div>
     <div class="card" style="margin-bottom:14px"><div class="sect"><span>📊 ${jt('최근 6개월 매출·수금','Last 6mo revenue·collections')}</span><span class="muted" style="font-size:11px">${jt('진=매출 · 연=수금','dark=rev light=col')}</span></div>${trend}</div>
     <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">${jt('인식일','Date')}</th><th class="l">${jt('거래처','Client')}</th><th class="l">${jt('제품','Product')}</th><th>${jt('수량','Qty')}</th><th>${jt('매출','Sales')}</th><th>${jt('수금','Collected')}</th><th>${jt('미수','AR')}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
@@ -731,7 +734,7 @@ function vAR(){
   var clArr=Object.entries(byCl).sort((a,b)=>b[1]-a[1]);var maxCl=Math.max(1,...clArr.map(x=>x[1]));
   var agMeta={'30내':['#94a3b8',jt('30일 이내','≤ 30d')],'30+':['#f59e0b','30d +'],'60+':['#ea580c','60d +'],'90+':['#dc2626','90d +']};
   var agCards=Object.keys(ag).map(function(k){var m=agMeta[k],on=fAg===k;
-    return '<div onclick="fAg=fAg===\''+k+'\'?\'\':\''+k+'\';render()" class="statcard" style="cursor:pointer;border-top:3px solid '+m[0]+';'+(on?'box-shadow:0 0 0 2px '+m[0]:'')+'"><div class="sv" style="color:'+m[0]+'">'+fmS(ag[k])+'</div><div class="sl">'+m[1]+' · '+agN[k]+jt('건','')+'</div></div>';}).join('');
+    return '<div onclick="fAg=fAg===\''+k+'\'?\'\':\''+k+'\';render()" class="statcard'+(on?' on':'')+'" style="border-top:3px solid '+m[0]+'"><div class="sv" style="color:'+m[0]+'">'+fmS(ag[k])+'</div><div class="sl">'+m[1]+' · '+agN[k]+jt('건','')+'</div></div>';}).join('');
   var rows=L.length?L.map(function(s){var d=daysBetween(s.date,today());var b=agingBucket(s);
     return `<tr onclick="dwSale('${s.id}')"><td class="l">${s.date}</td><td class="l" onclick="event.stopPropagation();openClient('${esc(s.client).replace(/'/g,'&#39;')}')" style="cursor:pointer"><b style="color:var(--ink);border-bottom:1px dotted #cbd5e1">${esc(s.client)}</b></td><td class="l">${esc(s.product)||'-'}</td><td>${fm(s.amt)}</td><td style="color:var(--ok)">${fm(colSum(s))}</td><td><b style="color:var(--bad)">${fm(outAmt(s))}</b></td><td><span class="chip c-${b==='90+'?'red':b==='60+'||b==='30+'?'amber':'gray'}">${d}${jt('일','d')}</span></td><td><button class="btn btn-sm" onclick="event.stopPropagation();quickCollect('${s.id}')">＋${jt('수금','collect')}</button></td></tr>`;}).join(''):'<tr><td colspan="8" class="empty" style="color:var(--ok)">'+jt('미수 채권이 없습니다 🎉','No outstanding AR 🎉')+'</td></tr>';
   return head('⏳ '+jt('미수금 현황','Receivables'), jt('받을 돈(매출−수금) · 경과일 카드 클릭 → 필터','Outstanding · click an aging card to filter'),
@@ -744,24 +747,28 @@ function vAR(){
 function csvAR(){var rows=[['date','client','product','sales','collected','AR','days']];(D.sales||[]).filter(s=>outAmt(s)>0).forEach(s=>rows.push([s.date,s.client,s.product,s.amt,colSum(s),outAmt(s),daysBetween(s.date,today())]));dlCsv('ar_corp_us_erp.csv',rows);}
 
 // ── 수주 관리 ──
+let fOrdFilter='';
 const ORD_HEX={'수주':'#2563eb','생산중':'#d97706','선적중':'#0891b2','납품완료':'#16a34a','취소':'#94a3b8'};
 function vOrders(){
-  var L=(D.orders||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  var back=L.filter(o=>o.status!=='납품완료'&&o.status!=='취소');
+  var all=(D.orders||[]).slice();
+  var back=all.filter(o=>o.status!=='납품완료'&&o.status!=='취소');
   var backAmt=back.reduce((a,o)=>a+(+o.amt||0),0);
   var dueThis=back.filter(o=>o.eta&&o.eta.slice(0,7)===curYm());
-  var lateN=back.filter(o=>o.eta&&o.eta<today()).length;
+  var late=back.filter(o=>o.eta&&o.eta<today());
+  var lateN=late.length;
+  var L=fOrdFilter==='backlog'?back:fOrdFilter==='due'?dueThis:fOrdFilter==='late'?late:all;
+  L=L.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   var stages=['수주','생산중','선적중','납품완료'];
-  var pipe=stages.map(function(st,i){var os=L.filter(o=>o.status===st);var amt=os.reduce((a,o)=>a+(+o.amt||0),0);var c=ORD_HEX[st];
+  var pipe=stages.map(function(st,i){var os=all.filter(o=>o.status===st);var amt=os.reduce((a,o)=>a+(+o.amt||0),0);var c=ORD_HEX[st];
     return '<div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--line);border-top:3px solid '+c+';border-radius:12px;padding:13px 15px;box-shadow:var(--sh)"><div style="font-size:11.5px;font-weight:700;color:'+c+'">'+jt(st,EN[st]||st)+'</div><div style="font-size:22px;font-weight:800;color:var(--ink);margin-top:4px">'+os.length+'</div><div style="font-size:11px;color:var(--muted)">'+fmS(amt)+'</div></div>';}).join('<div style="align-self:center;color:#cbd5e1;font-size:18px">→</div>');
   var rows=L.length?L.map(function(o){var late=o.eta&&o.eta<today()&&o.status!=='납품완료'&&o.status!=='취소';var dday=o.eta&&o.status!=='납품완료'&&o.status!=='취소'&&o.eta>=today()?daysBetween(today(),o.eta):null;
     return `<tr onclick="mOrder('${o.id}')"><td class="l">${o.date}</td><td class="l" onclick="event.stopPropagation();openClient('${esc(o.client).replace(/'/g,'&#39;')}')" style="cursor:pointer"><b style="color:var(--ink);border-bottom:1px dotted #cbd5e1">${esc(o.client)}</b></td><td class="l" onclick="event.stopPropagation();openProduct('${esc(o.product).replace(/'/g,'&#39;')}')" style="cursor:pointer">${esc(o.product)||'-'}</td><td>${o.qty||'-'}</td><td><b>${fm(o.amt)}</b></td><td class="l">${ordChip(o.status)}</td><td class="l" style="${late?'color:var(--bad);font-weight:700':dday!=null&&dday<=7?'color:var(--warn);font-weight:600':''}">${o.eta?o.eta+(late?' ⚠':(dday!=null&&dday<=7?' · D-'+dday:'')):'-'}</td><td>${(o.status!=='납품완료'&&o.status!=='취소')?`<button class="btn btn-sm" onclick="event.stopPropagation();convertOrder('${o.id}')" title="${jt('납품완료+매출생성','Deliver+sale')}">✓ ${jt('납품→매출','Deliver')}</button>`:(o.saleId?'<span class="chip c-green">'+jt('매출 연결','Linked')+'</span>':'')}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">'+jt('수주 기록이 없습니다','No orders yet')+'</td></tr>';
   return head('📝 '+jt('수주 관리','Orders'), jt('수주 → 생산 → 선적 → 납품(매출 전환)','Order → Production → Shipping → Delivered'),
     `<button class="btn btn-sm" onclick="csvOrders()"><i class="bi bi-download"></i> CSV</button><button class="btn btn-primary" onclick="mOrder()">+ ${jt('수주','Order')}</button>`)
     +`<div class="grid actkpi" style="grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">
-      <div class="statcard" style="border-top:3px solid #4f46e5"><div class="sv">${fmS(backAmt)}</div><div class="sl">${jt('진행 수주 잔고','Open backlog')} · ${back.length}${jt('건','')}</div></div>
-      <div class="statcard" style="border-top:3px solid #f59e0b"><div class="sv" style="color:${dueThis.length?'var(--warn)':'var(--ink)'}">${dueThis.length}</div><div class="sl">${jt('이달 납품 예정','Due this month')} · ${fmS(dueThis.reduce((a,o)=>a+(+o.amt||0),0))}</div></div>
-      <div class="statcard" style="border-top:3px solid #dc2626"><div class="sv" style="color:${lateN?'var(--bad)':'var(--ink)'}">${lateN}</div><div class="sl">${jt('납기 지연','Overdue')}</div></div></div>
+      <div class="statcard${fOrdFilter==='backlog'?' on':''}" style="border-top:3px solid #4f46e5" onclick="fOrdFilter=fOrdFilter==='backlog'?'':'backlog';render()"><div class="sv">${fmS(backAmt)}</div><div class="sl">${jt('진행 수주 잔고','Open backlog')} · ${back.length}${jt('건','')}</div></div>
+      <div class="statcard${fOrdFilter==='due'?' on':''}" style="border-top:3px solid #f59e0b" onclick="fOrdFilter=fOrdFilter==='due'?'':'due';render()"><div class="sv" style="color:${dueThis.length?'var(--warn)':'var(--ink)'}">${dueThis.length}</div><div class="sl">${jt('이달 납품 예정','Due this month')} · ${fmS(dueThis.reduce((a,o)=>a+(+o.amt||0),0))}</div></div>
+      <div class="statcard${fOrdFilter==='late'?' on':''}" style="border-top:3px solid #dc2626" onclick="fOrdFilter=fOrdFilter==='late'?'':'late';render()"><div class="sv" style="color:${lateN?'var(--bad)':'var(--ink)'}">${lateN}</div><div class="sl">${jt('납기 지연','Overdue')}</div></div></div>
     <div class="card" style="margin-bottom:14px"><div class="sect"><span>🚚 ${jt('진행 단계','Pipeline')}</span></div><div style="display:flex;gap:8px;flex-wrap:wrap">${pipe}</div></div>
     <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">${jt('수주일','Date')}</th><th class="l">${jt('거래처','Client')}</th><th class="l">${jt('제품','Product')}</th><th>${jt('수량','Qty')}</th><th>${jt('금액','Amount')}</th><th class="l">${jt('상태','Status')}</th><th class="l">${jt('납기','ETA')}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
@@ -784,7 +791,7 @@ async function convertOrder(id){const o=(D.orders||[]).find(x=>x.id===id);if(!o)
 function csvOrders(){const rows=[['수주일','거래처','제품','수량','금액','상태','납기']];(D.orders||[]).forEach(o=>rows.push([o.date,o.client,o.product,o.qty,o.amt,o.status,o.eta]));dlCsv('orders_corp_us_erp.csv',rows);}
 
 // ── 거래처 분석 ──
-let fCliQ='', fCliSort='sale';
+let fCliQ='', fCliSort='sale', fCliArOnly=false;
 const GRADE_HEX={'A':'#dc2626','B':'#d97706','C':'#64748b'};
 function vClients(){
   var spark6=[];{var n=new Date();for(var i=5;i>=0;i--){var d=new Date(n.getFullYear(),n.getMonth()-i,1);spark6.push(d.toISOString().slice(0,7));}}
@@ -795,6 +802,7 @@ function vClients(){
   var lastAct={};(D.acts||[]).forEach(function(a){if(!lastAct[a.client]||a.date>lastAct[a.client])lastAct[a.client]=a.date;});
   var L=Object.entries(agg);
   if(fCliQ)L=L.filter(function(e){return e[0].toLowerCase().indexOf(fCliQ.toLowerCase())>=0;});
+  if(fCliArOnly)L=L.filter(function(e){return e[1].out>0;});
   L.sort(function(a,b){return fCliSort==='out'?b[1].out-a[1].out:b[1].sale-a[1].sale;});
   var total=Object.keys(agg).length, withOut=Object.values(agg).filter(function(v){return v.out>0;}).length;
   var totOut=Object.values(agg).reduce(function(a,v){return a+v.out;},0), totSale=Object.values(agg).reduce(function(a,v){return a+v.sale;},0);
@@ -802,7 +810,7 @@ function vClients(){
     var col=GRADE_HEX[mst.grade]||'#64748b';
     var init=(c.match(/[A-Za-z가-힣]/)||['?'])[0].toUpperCase();
     var mx=Math.max(1,...spark6.map(function(k){return v.m&&v.m[k]||0;}));
-    var spark='<div style="display:flex;gap:2px;align-items:flex-end;height:24px">'+spark6.map(function(k){var h=(v.m&&v.m[k]||0)/mx*100;return '<div title="'+k+'" style="width:7px;background:'+(h?'var(--brand)':'#eef1f5')+';height:'+Math.max(4,h)+'%;border-radius:2px"></div>';}).join('')+'</div>';
+    var spark='<div style="display:flex;gap:2px;align-items:flex-end;height:24px">'+spark6.map(function(k){var rv=v.m&&v.m[k]||0;return '<div title="'+k+'" style="width:7px;background:'+(rv?'var(--brand)':'#eef1f5')+';height:'+barPct(rv,mx)+'%;border-radius:2px"></div>';}).join('')+'</div>';
     return '<div class="ccard" onclick="openClient(\''+esc(c).replace(/'/g,'&#39;')+'\')">'
       +'<div style="display:flex;align-items:center;gap:10px"><div class="cav" style="background:'+col+'">'+esc(init)+'</div>'
       +'<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c)+'</div>'
@@ -817,10 +825,10 @@ function vClients(){
     +'<select class="sel" onchange="fCliSort=this.value;render()"><option value="sale"'+(fCliSort==='sale'?' selected':'')+'>'+jt('매출순','By sales')+'</option><option value="out"'+(fCliSort==='out'?' selected':'')+'>'+jt('미수순','By AR')+'</option></select>'
     +'<button class="btn btn-primary" onclick="mClient()">+ '+jt('고객사','Account')+'</button>')
     +'<div class="grid actkpi" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">'
-    +'<div class="statcard" style="border-top:3px solid #4f46e5"><div class="sv">'+total+'</div><div class="sl">'+jt('거래처','Clients')+'</div></div>'
-    +'<div class="statcard" style="border-top:3px solid #16a34a"><div class="sv">'+fmS(totSale)+'</div><div class="sl">'+jt('누적 매출','Total sales')+'</div></div>'
-    +'<div class="statcard" style="border-top:3px solid #dc2626"><div class="sv" style="color:'+(withOut?'var(--bad)':'var(--ink)')+'">'+withOut+'</div><div class="sl">'+jt('미수 거래처','With AR')+'</div></div>'
-    +'<div class="statcard" style="border-top:3px solid #f59e0b"><div class="sv">'+fmS(totOut)+'</div><div class="sl">'+jt('총 미수','Total AR')+'</div></div></div>'
+    +'<div class="statcard'+(!fCliArOnly&&fCliSort==='sale'?' on':'')+'" style="border-top:3px solid #4f46e5" onclick="fCliArOnly=false;fCliSort=\'sale\';render()"><div class="sv">'+total+'</div><div class="sl">'+jt('거래처','Clients')+'</div></div>'
+    +'<div class="statcard'+(!fCliArOnly&&fCliSort==='sale'?' on':'')+'" style="border-top:3px solid #16a34a" onclick="fCliArOnly=false;fCliSort=\'sale\';render()"><div class="sv">'+fmS(totSale)+'</div><div class="sl">'+jt('누적 매출','Total sales')+'</div></div>'
+    +'<div class="statcard'+(fCliArOnly?' on':'')+'" style="border-top:3px solid #dc2626" onclick="fCliArOnly=!fCliArOnly;if(fCliArOnly)fCliSort=\'out\';render()"><div class="sv" style="color:'+(withOut?'var(--bad)':'var(--ink)')+'">'+withOut+'</div><div class="sl">'+jt('미수 거래처','With AR')+'</div></div>'
+    +'<div class="statcard'+(!fCliArOnly&&fCliSort==='out'?' on':'')+'" style="border-top:3px solid #f59e0b" onclick="fCliArOnly=false;fCliSort=\'out\';render()"><div class="sv">'+fmS(totOut)+'</div><div class="sl">'+jt('총 미수','Total AR')+'</div></div></div>'
     +'<div class="cgrid">'+cards+'</div></div>';
 }
 function openProduct(name){
@@ -835,7 +843,7 @@ function openProduct(name){
   var months=[];var now=new Date(today());for(var i=5;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(d.toISOString().slice(0,7));}
   var mm={};sales.forEach(function(s){var k=ym(s.date);if(months.indexOf(k)>=0)mm[k]=(mm[k]||0)+(+s.amt||0);});
   var mmx=Math.max(1,...months.map(function(k){return mm[k]||0;}));
-  var spark='<div style="display:flex;gap:4px;align-items:flex-end;height:44px;margin-top:6px">'+months.map(function(k){var h=(mm[k]||0)/mmx*100;return '<div style="flex:1;text-align:center"><div style="height:40px;display:flex;align-items:flex-end"><div title="'+k+': '+fm(mm[k]||0)+'" style="width:100%;background:'+(h?'var(--brand)':'#eef1f5')+';height:'+Math.max(4,h)+'%;border-radius:3px 3px 0 0"></div></div><div style="font-size:9px;color:var(--muted);margin-top:2px">'+(+k.slice(5))+'</div></div>';}).join('')+'</div>';
+  var spark='<div style="display:flex;gap:4px;align-items:flex-end;height:44px;margin-top:6px">'+months.map(function(k){var rv=mm[k]||0;return '<div style="flex:1;text-align:center"><div style="height:40px;display:flex;align-items:flex-end"><div title="'+k+': '+fm(rv)+'" style="width:100%;background:'+(rv?'var(--brand)':'#eef1f5')+';height:'+barPct(rv,mmx)+'%;border-radius:3px 3px 0 0"></div></div><div style="font-size:9px;color:var(--muted);margin-top:2px">'+(+k.slice(5))+'</div></div>';}).join('')+'</div>';
   var byCl={};sales.forEach(function(s){byCl[s.client]=(byCl[s.client]||0)+(+s.amt||0);});
   var clArr=Object.entries(byCl).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
   var sHtml=sales.length?sales.slice(0,12).map(function(s){return `<div onclick="closeDw();dwSale('${s.id}')" style="display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer"><span class="muted">${s.date}</span><span style="flex:1">${esc(s.client)}</span><b>${fm(s.amt)}</b>${outAmt(s)>0?`<span class="chip c-red">${jt('미수','AR')}</span>`:''}</div>`;}).join(''):'<div class="empty">'+jt('매출 없음','No sales')+'</div>';
@@ -885,30 +893,35 @@ function openClient(name){
 }
 
 // ── 물류·재고 ──
+let fInvFilter='';
 function vInv(){
   var items=(D.items||[]);
   var low=items.filter(function(i){return itemQty(i.name)<(+i.safety||0);});
   var cm=curYm();var inM=0,outM=0;(D.moves||[]).forEach(function(m){if(ym(m.date)===cm){if(m.type==='입고')inM+=+m.qty||0;else outM+=+m.qty||0;}});
-  var cards=items.length?items.map(function(i){var q=itemQty(i.name);var sf=+i.safety||0;var lo=q<sf;var ratio=sf?Math.min(100,q/sf*100):100;var col=lo?'#dc2626':q<sf*1.3?'#f59e0b':'#16a34a';
+  var cardItems=fInvFilter==='low'?low:items;
+  var cards=cardItems.length?cardItems.map(function(i){var q=itemQty(i.name);var sf=+i.safety||0;var lo=q<sf;var ratio=sf?Math.min(100,q/sf*100):100;var col=lo?'#dc2626':q<sf*1.3?'#f59e0b':'#16a34a';
     return '<div class="ccard" onclick="openItem(\''+i.id+'\')">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px"><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+trUser(i.name)+'</div><div style="font-size:11px;color:var(--muted)">📍 '+(i.loc?trUser(i.loc):'-')+'</div></div>'+(lo?'<span class="chip c-red" style="font-size:10px;flex-shrink:0">'+jt('부족','LOW')+'</span>':'<span class="chip c-green" style="font-size:10px;flex-shrink:0">'+jt('정상','OK')+'</span>')+'</div>'
       +'<div style="margin-top:11px;display:flex;align-items:baseline;gap:5px"><b style="font-size:25px;color:'+col+';line-height:1">'+q.toLocaleString()+'</b><span class="muted" style="font-size:12px">'+trUser(i.unit)+'</span></div>'
       +'<div class="bar" style="margin-top:9px;height:8px;background:#f1f5f9"><i style="width:'+ratio+'%;background:'+col+'"></i></div>'
       +'<div style="font-size:10.5px;color:var(--muted);margin-top:4px">'+jt('안전재고','safety')+' '+sf.toLocaleString()+trUser(i.unit)+'</div></div>';
   }).join(''):'<div class="card"><div class="empty">'+jt('품목이 없습니다','No items')+'</div></div>';
-  var mv=(D.moves||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,40);
+  var movesAll=(D.moves||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var mv=fInvFilter==='in'?movesAll.filter(function(m){return m.type==='입고'&&ym(m.date)===cm;})
+    :fInvFilter==='out'?movesAll.filter(function(m){return m.type==='출고'&&ym(m.date)===cm;})
+    :movesAll.slice(0,40);
   var mRows=mv.length?mv.map(function(m){return `<tr onclick="mMove('${m.id}')"><td class="l">${m.date}</td><td class="l">${m.type==='입고'?'<span class="chip c-green"><i class="bi bi-box-arrow-in-down"></i> '+jt('입고','IN')+'</span>':'<span class="chip c-amber"><i class="bi bi-box-arrow-up"></i> '+jt('출고','OUT')+'</span>'}</td><td class="l"><b style="color:var(--ink)">${trUser(m.item)}</b></td><td><b>${(+m.qty||0).toLocaleString()}</b></td><td class="l muted">${trUser(m.ref)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">'+jt('입출고 이력 없음','No movements')+'</td></tr>';
   return head('📦 '+jt('물류 · 재고','Inventory'), jt('품목 = 취급 제품 목록 · 입출고 = 재고 이동 이력 · 품목 클릭 → 이력·입출고','Items = product master · Moves = stock in/out · click an item for history'),
     `<button class="btn" onclick="mItem()">+ ${jt('품목','Item')}</button><button class="btn" style="color:#15803d;font-weight:700" onclick="mMove(null,{type:'입고'})">📥 ${jt('입고','Receive')}</button><button class="btn btn-primary" onclick="mMove(null,{type:'출고'})">📤 ${jt('출고','Ship')}</button>`)
     +`<div class="grid actkpi" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-      <div class="statcard" style="border-top:3px solid #4f46e5"><div class="sv">${items.length}</div><div class="sl">${jt('등록 품목','Items')}</div></div>
-      <div class="statcard" style="border-top:3px solid #dc2626"><div class="sv" style="color:${low.length?'var(--bad)':'var(--ink)'}">${low.length}</div><div class="sl">${jt('안전재고 미달','Low stock')}</div></div>
-      <div class="statcard" style="border-top:3px solid #16a34a"><div class="sv" style="color:var(--ok)">+${inM.toLocaleString()}</div><div class="sl">${jt('이번달 입고','IN this mo.')}</div></div>
-      <div class="statcard" style="border-top:3px solid #f59e0b"><div class="sv" style="color:var(--warn)">-${outM.toLocaleString()}</div><div class="sl">${jt('이번달 출고','OUT this mo.')}</div></div></div>
+      <div class="statcard${fInvFilter===''?' on':''}" style="border-top:3px solid #4f46e5" onclick="fInvFilter='';render()"><div class="sv">${items.length}</div><div class="sl">${jt('등록 품목','Items')}</div></div>
+      <div class="statcard${fInvFilter==='low'?' on':''}" style="border-top:3px solid #dc2626" onclick="fInvFilter=fInvFilter==='low'?'':'low';render()"><div class="sv" style="color:${low.length?'var(--bad)':'var(--ink)'}">${low.length}</div><div class="sl">${jt('안전재고 미달','Low stock')}</div></div>
+      <div class="statcard${fInvFilter==='in'?' on':''}" style="border-top:3px solid #16a34a" onclick="fInvFilter=fInvFilter==='in'?'':'in';render()"><div class="sv" style="color:var(--ok)">+${inM.toLocaleString()}</div><div class="sl">${jt('이번달 입고','IN this mo.')}</div></div>
+      <div class="statcard${fInvFilter==='out'?' on':''}" style="border-top:3px solid #f59e0b" onclick="fInvFilter=fInvFilter==='out'?'':'out';render()"><div class="sv" style="color:var(--warn)">-${outM.toLocaleString()}</div><div class="sl">${jt('이번달 출고','OUT this mo.')}</div></div></div>
     ${_shipSection()}
     <div class="sect" style="margin-bottom:10px"><span>📦 ${jt('품목별 재고','Stock by Item')}</span></div>
     <div class="cgrid" style="margin-bottom:18px">${cards}</div>
-    <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 18px 4px"><span>🚚 ${jt('입출고 이력','Movements')} <span class="muted" style="font-weight:500;font-size:11px">${jt('최근 40건','last 40')}</span></span></div><table><thead><tr><th class="l">${jt('날짜','Date')}</th><th class="l">${jt('구분','Type')}</th><th class="l">${jt('품목','Item')}</th><th>${jt('수량','Qty')}</th><th class="l">${jt('참조','Ref')}</th></tr></thead><tbody>${mRows}</tbody></table></div></div>`;
+    <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 18px 4px"><span>🚚 ${jt('입출고 이력','Movements')} <span class="muted" style="font-weight:500;font-size:11px">${(fInvFilter==='in'||fInvFilter==='out')?jt('이번달만','this month'):jt('최근 40건','last 40')}</span></span></div><table><thead><tr><th class="l">${jt('날짜','Date')}</th><th class="l">${jt('구분','Type')}</th><th class="l">${jt('품목','Item')}</th><th>${jt('수량','Qty')}</th><th class="l">${jt('참조','Ref')}</th></tr></thead><tbody>${mRows}</tbody></table></div></div>`;
 }
 function mItem(id){const it=id?(D.items||[]).find(x=>x.id===id):{name:'',unit:'개',qty0:'',safety:'',loc:''};
   openM(id?'품목 수정':'품목 추가',
@@ -1029,11 +1042,18 @@ function _shipSection(){
   return '<div class="sect" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center"><span>🚢 '+jt('본사 선적 · 입고 대사','HQ Shipments · Receiving')+' <span class="muted" style="font-weight:500;font-size:11px">'+jt('본사 발송 → 법인 입고 매칭','HQ sent → local received')+'</span></span><button class="btn btn-sm" onclick="mShip()">+ '+jt('선적 등록','New shipment')+'</button></div>'
     +'<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">'
       +'<div class="statcard" style="border-top:3px solid #6366f1"><div class="sv">'+qShip.toLocaleString()+'</div><div class="sl">'+jt('본사 발송 (누계)','HQ sent total')+'</div></div>'
-      +'<div class="statcard" style="border-top:3px solid #16a34a"><div class="sv" style="color:var(--ok)">'+qRecv.toLocaleString()+'</div><div class="sl">'+jt('법인 입고완료','Received')+'</div></div>'
+      +'<div class="statcard" style="border-top:3px solid #16a34a;cursor:pointer" onclick="openShipList(\'done\')"><div class="sv" style="color:var(--ok)">'+qRecv.toLocaleString()+'</div><div class="sl">'+jt('법인 입고완료','Received')+'</div></div>'
       +'<div class="statcard" style="border-top:3px solid #f59e0b"><div class="sv" style="color:'+(qTransit?'var(--warn)':'var(--ink)')+'">'+qTransit.toLocaleString()+'</div><div class="sl">'+jt('운송중 (미착)','In transit')+(late?' · <span style="color:var(--bad)">'+jt('지연','late')+' '+late+'</span>':'')+'</div></div>'
-      +'<div class="statcard" style="border-top:3px solid '+(disc?'#dc2626':'#94a3b8')+'"><div class="sv" style="color:'+(disc?'var(--bad)':'var(--ink)')+'">'+disc+'</div><div class="sl">'+jt('수량 불일치','Qty mismatch')+'</div></div></div>'
+      +'<div class="statcard" style="border-top:3px solid '+(disc?'#dc2626':'#94a3b8')+';cursor:pointer" onclick="openShipList(\'mismatch\')"><div class="sv" style="color:'+(disc?'var(--bad)':'var(--ink)')+'">'+disc+'</div><div class="sl">'+jt('수량 불일치','Qty mismatch')+'</div></div></div>'
     +'<div class="cgrid" style="margin-bottom:'+(recent?'12px':'18px')+'">'+tCards+'</div>'
     +(recent?'<div class="card" style="margin-bottom:18px"><div class="sect" style="margin-bottom:6px"><span>✓ '+jt('최근 입고완료','Recently received')+'</span></div>'+recent+'</div>':'');
+}
+function openShipList(kind){
+  var sh=(D.shipments||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var done=sh.filter(function(s){return s.status==='received';});
+  var list=kind==='mismatch'?done.filter(function(s){return s.recvQty!=null&&(+s.recvQty)!==(+s.qty);}):done;
+  var html=list.length?list.map(function(s){var d=s.recvQty!=null&&(+s.recvQty)!==(+s.qty);return `<div onclick="closeDw();mShip('${s.id}')" style="display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12px;cursor:pointer"><span class="chip c-green" style="font-size:10px">${jt('입고완료','DONE')}</span><b style="color:var(--ink)">${esc(s.shipRef||'-')}</b><span style="flex:1;color:var(--body)">${trUser(s.item)} ×${(+s.qty||0)}</span>${d?`<span class="chip c-red" style="font-size:10px">${jt('차이','DIFF')} ${((+s.recvQty)-(+s.qty)>0?'+':'')}${((+s.recvQty)-(+s.qty))}</span>`:''}<span class="muted" style="font-size:11px">${s.receivedDate||''}</span></div>`;}).join(''):'<div class="empty">'+jt('해당 선적 없음','No shipments')+'</div>';
+  openDw(jt('선적','Shipment'), kind==='mismatch'?jt('수량 불일치 목록','Qty mismatches'):jt('입고완료 전체','All received'), '<div class="dwcard">'+html+'</div>');
 }
 function mShip(id){
   var s=id?(D.shipments||[]).find(function(x){return x.id===id;}):{shipRef:'',date:today(),item:'',qty:'',eta:'',status:'shipped'};
@@ -1081,8 +1101,9 @@ const ASSET_ST_EN={'재고':'In stock','출고':'At client','설치':'Installed'
 const EVT_COL={'입고':'#16a34a','출고':'#2563eb','설치':'#0d9488','AS':'#f59e0b','반품':'#dc2626'};
 let fAssetSt='',fAssetItem='',fAssetQ='';
 function setAssetF(k,v){if(k==='st')fAssetSt=v;if(k==='item')fAssetItem=v;render();}
+function assetCardF(v){fAssetSt=(JSON.stringify(fAssetSt)===JSON.stringify(v))?'':v;render();}
 function _assetList(){var L=(D.equipment||[]).slice();
-  if(fAssetSt)L=L.filter(function(e){return e.status===fAssetSt;});
+  if(fAssetSt)L=L.filter(function(e){return Array.isArray(fAssetSt)?fAssetSt.indexOf(e.status)>=0:e.status===fAssetSt;});
   if(fAssetItem)L=L.filter(function(e){return e.item===fAssetItem;});
   if(fAssetQ){var qq=fAssetQ.toLowerCase();L=L.filter(function(e){return (((e.serial||'')+' '+(e.client||'')+' '+(e.item||'')).toLowerCase()).indexOf(qq)>=0;});}
   return L.sort(function(a,b){return (b.inDate||'').localeCompare(a.inDate||'');});}
@@ -1101,10 +1122,10 @@ function vAsset(){
   return head('🔧 '+jt('장비 이력','Equipment Registry'), jt('시리얼 단위 장비 추적 · 입고 → 출고 → 고객사 · 행 클릭 → 전체 이력','Serial-level asset tracking · receipt → shipment → client · click a row for full lifecycle'),
     '<button class="btn btn-sm" onclick="mAsset()">+ '+jt('장비','Unit')+'</button>')
     +'<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">'
-      +'<div class="statcard" style="border-top:3px solid #4f46e5"><div class="sv">'+all.length+'</div><div class="sl">'+jt('총 장비','Total units')+'</div></div>'
-      +'<div class="statcard" style="border-top:3px solid #64748b"><div class="sv">'+inStock+'</div><div class="sl">'+jt('창고 재고','In stock')+'</div></div>'
-      +'<div class="statcard" style="border-top:3px solid #16a34a"><div class="sv" style="color:var(--ok)">'+atClient+'</div><div class="sl">'+jt('고객사 보유','At clients')+'</div></div>'
-      +'<div class="statcard" style="border-top:3px solid #f59e0b"><div class="sv" style="color:'+(svc?'var(--warn)':'var(--ink)')+'">'+svc+'</div><div class="sl">'+jt('AS · 반품','Service/return')+'</div></div></div>'
+      +'<div class="statcard'+(fAssetSt===''?' on':'')+'" style="border-top:3px solid #4f46e5" onclick="assetCardF(\'\')"><div class="sv">'+all.length+'</div><div class="sl">'+jt('총 장비','Total units')+'</div></div>'
+      +'<div class="statcard'+(fAssetSt==='재고'?' on':'')+'" style="border-top:3px solid #64748b" onclick="assetCardF(\'재고\')"><div class="sv">'+inStock+'</div><div class="sl">'+jt('창고 재고','In stock')+'</div></div>'
+      +'<div class="statcard'+(JSON.stringify(fAssetSt)===JSON.stringify(['출고','설치','AS'])?' on':'')+'" style="border-top:3px solid #16a34a" onclick=\'assetCardF(["출고","설치","AS"])\'><div class="sv" style="color:var(--ok)">'+atClient+'</div><div class="sl">'+jt('고객사 보유','At clients')+'</div></div>'
+      +'<div class="statcard'+(JSON.stringify(fAssetSt)===JSON.stringify(['AS','반품'])?' on':'')+'" style="border-top:3px solid #f59e0b" onclick=\'assetCardF(["AS","반품"])\'><div class="sv" style="color:'+(svc?'var(--warn)':'var(--ink)')+'">'+svc+'</div><div class="sl">'+jt('AS · 반품','Service/return')+'</div></div></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><div style="display:flex;gap:5px;flex-wrap:wrap">'+stChips+'</div><select onchange="setAssetF(\'item\',this.value)" style="margin-left:auto">'+itemOpts+'</select><input placeholder="'+jt('시리얼·고객사 검색','Search serial/client')+'" value="'+esc(fAssetQ)+'" oninput="fAssetQ=this.value" onkeydown="if(event.key===\'Enter\')render()" style="min-width:160px"></div>'
     +'<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">'+jt('시리얼','Serial')+'</th><th class="l">'+jt('품목','Item')+'</th><th class="l">'+jt('상태','Status')+'</th><th class="l">'+jt('현재 위치','Location')+'</th><th class="l">'+jt('입고일','In')+'</th><th class="l">'+jt('출고일','Out')+'</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
@@ -1165,7 +1186,7 @@ function vFunds(){
   const inn=L.filter(f=>f.kind==='입금').reduce((a,f)=>a+(+f.amt||0),0);
   const out=L.filter(f=>f.kind==='출금').reduce((a,f)=>a+(+f.amt||0),0);
   const accCards=(D.accounts||[]).map(a=>{const b=fundsBalAcc(a.name);
-    return `<div class="statcard" style="cursor:pointer;border-top:3px solid #4f46e5;${fFundAcc===a.name?'border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)':''}" onclick="fFundAcc=fFundAcc==='${esc(a.name).replace(/'/g,"&#39;")}'?'':'${esc(a.name).replace(/'/g,"&#39;")}';render()">
+    return `<div class="statcard${fFundAcc===a.name?' on':''}" style="border-top:3px solid #4f46e5" onclick="fFundAcc=fFundAcc==='${esc(a.name).replace(/'/g,"&#39;")}'?'':'${esc(a.name).replace(/'/g,"&#39;")}';render()">
       <div class="sv" style="color:${b<0?'var(--bad)':'var(--ink)'}">${fm(b)}</div><div class="sl">${esc(a.name)}</div><div class="s" style="font-size:11px;color:var(--muted);margin-top:4px">기초 ${fm(a.opening)} · ${fkrw(b)}</div></div>`;}).join('');
   const rows=L.length?L.map(f=>`<tr onclick="mFund('${f.id}')"><td class="l">${f.date}</td><td class="l">${f.kind==='입금'?'<span class="chip c-green">입금</span>':'<span class="chip c-red">출금</span>'}</td><td class="l">${esc(f.account||'주거래계좌')}</td><td class="l">${esc(f.category||'-')}</td><td><b style="color:${f.kind==='입금'?'var(--ok)':'var(--bad)'}">${f.kind==='입금'?'+':'-'}${fm(f.amt)}</b></td><td class="l muted">${trUser(f.memo||'')}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">자금 내역 없음</td></tr>';
   return head('🏦 자금 관리','계좌별 잔액 = 기초 + 입금 − 출금 · 계좌 카드 클릭 = 필터',
@@ -1357,10 +1378,14 @@ function mClient(id){const c=id?(D.clients||[]).find(x=>x.id===id):{name:'',cont
 
 // ── CRM: 활동 기록 ──
 function _segIc(t){var p={timeline:'<line x1="3.5" y1="4" x2="13" y2="4"/><line x1="3.5" y1="8" x2="13" y2="8"/><line x1="3.5" y1="12" x2="13" y2="12"/>',calendar:'<rect x="2.5" y="3.2" width="11" height="10.3" rx="1.6"/><line x1="2.5" y1="6.2" x2="13.5" y2="6.2"/><line x1="5.5" y1="1.8" x2="5.5" y2="4"/><line x1="10.5" y1="1.8" x2="10.5" y2="4"/>',list:'<rect x="2.5" y="3.2" width="11" height="9.8" rx="1.6"/><line x1="2.5" y1="6.4" x2="13.5" y2="6.4"/><line x1="2.5" y1="9.6" x2="13.5" y2="9.6"/>',today:'<circle cx="8" cy="8" r="5.3"/><line x1="8" y1="8" x2="8" y2="5.2"/><line x1="8" y1="8" x2="10.2" y2="8"/>',week:'<rect x="2.5" y="3.2" width="11" height="10.3" rx="1.6"/><line x1="5.5" y1="1.8" x2="5.5" y2="4"/><line x1="10.5" y1="1.8" x2="10.5" y2="4"/><line x1="5" y1="9" x2="11" y2="9"/>'}[t]||'';return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="vertical-align:-2px">'+p+'</svg>';}
-let fActClient='', fActType='', actMode='timeline', actRef=new Date();
+let fActClient='', fActType='', fActQuick='', actMode='timeline', actRef=new Date();
 const ACT_ICON={'콜':'📞','미팅':'🤝','이메일':'✉️','방문':'📍','AS':'🛠'};
 const ACT_COL={'콜':'#2563eb','미팅':'#7c3aed','이메일':'#64748b','방문':'#16a34a','AS':'#f59e0b'};
-function _actList(){var L=(D.acts||[]).slice();if(fActClient)L=L.filter(a=>a.client===fActClient);if(fActType)L=L.filter(a=>a.type===fActType);return L;}
+function _actList(){var L=(D.acts||[]).slice();if(fActClient)L=L.filter(a=>a.client===fActClient);if(fActType)L=L.filter(a=>a.type===fActType);
+  if(fActQuick==='month')L=L.filter(a=>ym(a.date)===curYm());
+  if(fActQuick==='fu-week'){var wk=new Date();wk.setDate(wk.getDate()+7);var wkS=wk.toISOString().slice(0,10);L=L.filter(a=>a.nextDate&&!a.doneNext&&a.nextDate>=today()&&a.nextDate<=wkS);}
+  if(fActQuick==='fu-late')L=L.filter(a=>a.nextDate&&a.nextDate<today()&&!a.doneNext);
+  return L;}
 function setActMode(m){actMode=m;render();}
 function _actSerToggle(){var t=document.getElementById('f-type'),r=document.getElementById('act-serrow');if(t&&r)r.style.display=(t.value==='AS')?'block':'none';}
 function actNav(d){actRef.setMonth(actRef.getMonth()+d);actRef=new Date(actRef);render();}
@@ -1379,10 +1404,10 @@ function vActs(){
   return head('📞 '+jt('활동 기록','Activities'), jt('콜·미팅·방문·AS 이력 + 후속조치','Calls, meetings, visits, service + follow-ups')+(fuAll.length?' · <span style="color:var(--bad);font-weight:600">'+jt('후속 지연 ','overdue ')+fuAll.length+'</span>':''),
     seg+filters+nav+'<button class="btn btn-primary" onclick="mAct()">+ '+jt('활동','Activity')+'</button>')
     +`<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" class="actkpi">
-      <div class="statcard" style="border-top:3px solid #4f46e5"><div class="sv">${(D.acts||[]).length}</div><div class="sl">${jt('전체 활동','All activities')}</div></div>
-      <div class="statcard" style="border-top:3px solid #2563eb"><div class="sv">${mCnt}</div><div class="sl">${jt('이번달','This month')}</div></div>
-      <div class="statcard" style="border-top:3px solid #16a34a"><div class="sv" style="color:${up.length?'#16a34a':'var(--ink)'}">${up.length}</div><div class="sl">${jt('이번주 예정 후속','Follow-ups this wk')}</div></div>
-      <div class="statcard" style="border-top:3px solid #dc2626"><div class="sv" style="color:${fuAll.length?'var(--bad)':'var(--ink)'}">${fuAll.length}</div><div class="sl">${jt('지연 후속','Overdue')}</div></div>
+      <div class="statcard${fActQuick===''?' on':''}" style="border-top:3px solid #4f46e5" onclick="fActQuick='';render()"><div class="sv">${(D.acts||[]).length}</div><div class="sl">${jt('전체 활동','All activities')}</div></div>
+      <div class="statcard${fActQuick==='month'?' on':''}" style="border-top:3px solid #2563eb" onclick="fActQuick=fActQuick==='month'?'':'month';render()"><div class="sv">${mCnt}</div><div class="sl">${jt('이번달','This month')}</div></div>
+      <div class="statcard${fActQuick==='fu-week'?' on':''}" style="border-top:3px solid #16a34a" onclick="fActQuick=fActQuick==='fu-week'?'':'fu-week';render()"><div class="sv" style="color:${up.length?'#16a34a':'var(--ink)'}">${up.length}</div><div class="sl">${jt('이번주 예정 후속','Follow-ups this wk')}</div></div>
+      <div class="statcard${fActQuick==='fu-late'?' on':''}" style="border-top:3px solid #dc2626" onclick="fActQuick=fActQuick==='fu-late'?'':'fu-late';render()"><div class="sv" style="color:${fuAll.length?'var(--bad)':'var(--ink)'}">${fuAll.length}</div><div class="sl">${jt('지연 후속','Overdue')}</div></div>
     </div>${body}</div>`;
 }
 function actTimeline(L){
