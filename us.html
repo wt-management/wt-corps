@@ -236,6 +236,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
       <a data-v="clients"><span class="ico">🏢</span><span class="lbl">거래처 분석</span></a>
       <div class="grp">운영</div>
       <a data-v="perf"><span class="ico">🏆</span><span class="lbl">영업 성과</span></a>
+      <a data-v="psi"><span class="ico">📊</span><span class="lbl">PSI 현황</span></a>
       <a data-v="inv"><span class="ico">📦</span><span class="lbl">물류 · 재고</span></a>
       <a data-v="asset"><span class="ico">🔧</span><span class="lbl">장비 이력</span></a>
       <a data-v="funds"><span class="ico">🏦</span><span class="lbl">자금 관리</span></a>
@@ -295,7 +296,7 @@ async function loadPerm(uid){
     }}catch(e){_canPerf=false;_canHQ=false;}
 }
 function applyPerm(){var a=document.querySelector('#nav a[data-v="perf"]');if(a)a.style.display=_canPerf?'':'none';var h=document.querySelector('#nav a[data-v="hq"]');if(h)h.style.display=_canHQ?'':'none';}
-const blank=()=>({v:3,rate:1350,targets:{},accounts:[{name:'주거래계좌',opening:0}],sales:[],orders:[],items:[],moves:[],funds:[],expenses:[],clients:[],deals:[],acts:[],tasks:[],snapshots:[],shipments:[],equipment:[]});
+const blank=()=>({v:3,rate:1350,targets:{},accounts:[{name:'주거래계좌',opening:0}],sales:[],orders:[],items:[],moves:[],funds:[],expenses:[],clients:[],deals:[],acts:[],tasks:[],snapshots:[],shipments:[],equipment:[],psi:[]});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.random().toString(16).slice(2);
 
 // ── 부트 ──
@@ -343,7 +344,7 @@ function jt(ko,en){return L==='en'?en:ko;}
 const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const EN={
 '임원 대시보드':'Dashboard','월간 리포트':'Monthly Report','영업 성과':'Sales Performance','일정 · 할일':'Schedule · Tasks','📅 일정 / 할일':'📅 Schedule & Tasks','📋 월간 경영 리포트':'📋 Monthly Business Report','🏆 영업 성과':'🏆 Sales Performance','경영 요약':'EXECUTIVE','CRM 영업':'CRM','영업 · 채권':'SALES & AR','운영':'OPERATIONS',
-'딜 파이프라인':'Deal Pipeline','고객사 관리':'Accounts','활동 기록':'Activities','매출 · 수금':'Sales & Collections','미수금 현황':'Receivables (AR)','수주 관리':'Orders','거래처 분석':'Client Analysis','물류 · 재고':'Inventory','자금 관리':'Cash Management','사이트 이동':'Sites','비밀번호':'Password','로그아웃':'Logout','미국법인':'US Corp','전사 종합 경영현황':'Group Overview','한국 영업':'Korea Sales','해외 영업':'Global Sales','일본법인 관리':'Japan Corp','미국법인 관리':'USA Corp','태국법인 관리':'Thailand Corp','일일매출보고':'Daily Sales','상품기획 PM':'Product PM','데모 일정':'Demo Schedule','관리자 페이지':'Admin',
+'딜 파이프라인':'Deal Pipeline','고객사 관리':'Accounts','활동 기록':'Activities','매출 · 수금':'Sales & Collections','미수금 현황':'Receivables (AR)','수주 관리':'Orders','거래처 분석':'Client Analysis','PSI 현황':'PSI Status','물류 · 재고':'Inventory','자금 관리':'Cash Management','사이트 이동':'Sites','비밀번호':'Password','로그아웃':'Logout','미국법인':'US Corp','전사 종합 경영현황':'Group Overview','한국 영업':'Korea Sales','해외 영업':'Global Sales','일본법인 관리':'Japan Corp','미국법인 관리':'USA Corp','태국법인 관리':'Thailand Corp','일일매출보고':'Daily Sales','상품기획 PM':'Product PM','데모 일정':'Demo Schedule','관리자 페이지':'Admin',
 '📊 대시보드':'📊 Dashboard','🎯 딜 파이프라인':'🎯 Deal Pipeline','👥 고객사 관리':'👥 Accounts','📞 활동 기록':'📞 Activities','🧾 매출 · 수금':'🧾 Sales & Collections','⏳ 미수금 현황':'⏳ Receivables (AR)','📝 수주 관리':'📝 Orders','🏢 거래처 분석':'🏢 Client Analysis','📦 물류 · 재고':'📦 Inventory','🏦 자금 관리':'🏦 Cash Management',
 '미국법인 경영 현황':'WONTECH USA Overview','환율':'FX','기준':'as of',
 '카드를 끌어 단계 이동 · 성사 시 수주 자동 생성 · 클릭 → 수정':'Drag to move stage · Won deals auto-create orders · Click to edit',
@@ -461,6 +462,7 @@ function fkrw(n){const w=(Number(n)||0)*(D.rate||0);if(!w)return'';const a=Math.
 function monthsOf(arr,f){const s=new Set(arr.map(x=>ym(x[f||'date'])).filter(Boolean));return[...s].sort().reverse();}
 function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000);}
 function pct(n,d){return d>0?n/d*100:0;}
+function barPct(v,mx){return mx>0?Math.max(4,Math.pow(Math.max(0,v)/mx,0.55)*100):4;}
 function ordChip(s){return `<span class="chip ${ORD_ST[s]||'c-gray'}">${esc(s)}</span>`;}
 function clientList(){return [...new Set([].concat((D.sales||[]).map(s=>s.client),(D.orders||[]).map(o=>o.client),(D.deals||[]).map(d=>d.client),(D.clients||[]).map(c=>c.name)).filter(Boolean))].sort();}
 function dlist(){return '<datalist id="dl-clients">'+clientList().map(c=>'<option value="'+esc(c)+'">').join('')+'</datalist>';}
@@ -479,13 +481,13 @@ function fundsBal(){return (D.accounts||[]).reduce((a,x)=>a+fundsBalAcc(x.name),
 function itemQty(name){const it=(D.items||[]).find(i=>i.name===name);let q=it?(+it.qty0||0):0;(D.moves||[]).forEach(m=>{if(m.item===name)q+=(m.type==='입고'?1:-1)*(+m.qty||0);});return q;}
 
 // ── 라우팅 ──
-const VIEWS_KEYS=['dash','report','perf','sched','pipe','accounts','acts','sales','ar','orders','clients','inv','asset','funds','hq'];
+const VIEWS_KEYS=['dash','report','perf','sched','pipe','accounts','acts','sales','ar','orders','clients','psi','inv','asset','funds','hq'];
 function setView(v,noPush){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);if(!noPush){try{history.pushState({v:v},'','#'+v);}catch(e){}}}
 window.addEventListener('popstate',function(){var v=(location.hash||'').replace('#','');setView(VIEWS_KEYS.indexOf(v)>=0?v:'dash',true);});
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('mob-ov').classList.toggle('show');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('mob-ov').classList.remove('show');}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>{setView(a.dataset.v);closeSidebar();}));
-function render(){if(curView==='perf'&&!_canPerf)curView='dash';if(curView==='hq'&&!_canHQ)curView='dash';const f={dash:vDash,hq:vHQ,report:vReport,perf:vPerf,sched:vSched,pipe:vPipe,accounts:vAccounts,acts:vActs,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,asset:vAsset,funds:vFunds}[curView];document.getElementById('view').innerHTML=f();if(curView==='pipe')bindKb();applyLang();applyUserTr();}
+function render(){if(curView==='perf'&&!_canPerf)curView='dash';if(curView==='hq'&&!_canHQ)curView='dash';const f={dash:vDash,hq:vHQ,report:vReport,perf:vPerf,sched:vSched,pipe:vPipe,accounts:vAccounts,acts:vActs,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,psi:vPsi,inv:vInv,asset:vAsset,funds:vFunds}[curView];document.getElementById('view').innerHTML=f();if(curView==='pipe')bindKb();applyLang();applyUserTr();}
 function head(t,d,acts){return `<div class="topbar"><div><h2>${t}</h2><div class="desc">${d}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${acts||''}</div></div><div class="wrap">`;}
 function isEmpty(){return !(D.sales||[]).length&&!(D.orders||[]).length&&!(D.funds||[]).length&&!(D.items||[]).length;}
 
@@ -899,7 +901,7 @@ function vInv(){
   var mv=(D.moves||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,40);
   var mRows=mv.length?mv.map(function(m){return `<tr onclick="mMove('${m.id}')"><td class="l">${m.date}</td><td class="l">${m.type==='입고'?'<span class="chip c-green"><i class="bi bi-box-arrow-in-down"></i> '+jt('입고','IN')+'</span>':'<span class="chip c-amber"><i class="bi bi-box-arrow-up"></i> '+jt('출고','OUT')+'</span>'}</td><td class="l"><b style="color:var(--ink)">${trUser(m.item)}</b></td><td><b>${(+m.qty||0).toLocaleString()}</b></td><td class="l muted">${trUser(m.ref)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">'+jt('입출고 이력 없음','No movements')+'</td></tr>';
   return head('📦 '+jt('물류 · 재고','Inventory'), jt('품목 = 취급 제품 목록 · 입출고 = 재고 이동 이력 · 품목 클릭 → 이력·입출고','Items = product master · Moves = stock in/out · click an item for history'),
-    `<button class="btn" onclick="mItem()">+ ${jt('품목','Item')}</button><button class="btn" style="color:#15803d;font-weight:700" onclick="mMove(null,{type:'입고'})">📥 ${jt('입고','Receive')}</button><button class="btn btn-primary" onclick="mMove(null,{type:'출고'})">📤 ${jt('출고','Ship')}</button>`)
+    `<button class="btn" onclick="setView('psi')">📊 ${jt('PSI 보기','View PSI')}</button><button class="btn" onclick="mItem()">+ ${jt('품목','Item')}</button><button class="btn" style="color:#15803d;font-weight:700" onclick="mMove(null,{type:'입고'})">📥 ${jt('입고','Receive')}</button><button class="btn btn-primary" onclick="mMove(null,{type:'출고'})">📤 ${jt('출고','Ship')}</button>`)
     +`<div class="grid actkpi" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
       <div class="statcard" style="border-top:3px solid #4f46e5"><div class="sv">${items.length}</div><div class="sl">${jt('등록 품목','Items')}</div></div>
       <div class="statcard" style="border-top:3px solid #dc2626"><div class="sv" style="color:${low.length?'var(--bad)':'var(--ink)'}">${low.length}</div><div class="sl">${jt('안전재고 미달','Low stock')}</div></div>
@@ -1099,7 +1101,7 @@ function vAsset(){
   var stChips=['','재고','출고','설치','AS','반품'].map(function(s){var on=fAssetSt===s;var c=s?ASSET_ST[s]:'#4f46e5';return '<button onclick="setAssetF(\'st\',\''+s+'\')" style="padding:5px 12px;border-radius:999px;border:1px solid '+(on?c:'var(--line)')+';background:'+(on?c:'#fff')+';color:'+(on?'#fff':'var(--body)')+';font-size:12px;font-weight:'+(on?'700':'500')+';cursor:pointer">'+(s===''?jt('전체','All'):jt(s,ASSET_ST_EN[s]))+'</button>';}).join('');
   var itemOpts='<option value="">'+jt('전체 품목','All items')+'</option>'+itemsU.map(function(i){return '<option '+(fAssetItem===i?'selected':'')+'>'+esc(i)+'</option>';}).join('');
   return head('🔧 '+jt('장비 이력','Equipment Registry'), jt('시리얼 단위 장비 추적 · 입고 → 출고 → 고객사 · 행 클릭 → 전체 이력','Serial-level asset tracking · receipt → shipment → client · click a row for full lifecycle'),
-    '<button class="btn btn-sm" onclick="mAsset()">+ '+jt('장비','Unit')+'</button>')
+    '<button class="btn btn-sm" onclick="setView(\'psi\')">📊 '+jt('PSI 보기','View PSI')+'</button><button class="btn btn-sm" onclick="mAsset()">+ '+jt('장비','Unit')+'</button>')
     +'<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">'
       +'<div class="statcard" style="border-top:3px solid #4f46e5"><div class="sv">'+all.length+'</div><div class="sl">'+jt('총 장비','Total units')+'</div></div>'
       +'<div class="statcard" style="border-top:3px solid #64748b"><div class="sv">'+inStock+'</div><div class="sl">'+jt('창고 재고','In stock')+'</div></div>'
@@ -1207,6 +1209,97 @@ function mAccounts(){
       D.accounts=next;return await saveAll(jt('계좌 저장됨','Accounts saved'));},null);
 }
 function csvFunds(){const rows=[['날짜','구분','계좌','항목','금액','메모']];(D.funds||[]).forEach(f=>rows.push([f.date,f.kind,f.account,f.category,f.amt,f.memo]));dlCsv('funds_corp_us_erp.csv',rows);}
+
+// ── PSI (구매·판매·재고) ──
+const PSI_SEED=[
+  {model:'OLIGIO X TIP',kind:'consumable',p:[50,350,3040,4540,150,2160,500,300,500,500,500,500],s:[155,0,20,120,20,140,1700,2000,2500,2500,2500,2500],sellable:[30,140,2780,6620,6320,6205,8975,7275,5275,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {model:'OLIGIO TIP',kind:'consumable',p:[0,200,450,0,0,500,600,50,50,50,50,50],s:[100,30,110,40,55,215,200,180,160,160,160,160],sellable:[225,395,845,805,750,570,1365,1235,1125,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {model:'Oligio X',kind:'device',p:[0,12,10,28,5,22,15,22,25,25,25,25],s:[2,6,6,7,3,8,7,25,33,33,33,33],sellable:[2,8,12,33,31,52,59,56,48,0,0,0],nonSellable:[9,9,9,9,13,15,16,16,16,0,0,0]},
+  {model:'Oligio',kind:'device',p:[0,2,0,0,0,0,0,0,0,0,0,0],s:[0,1,1,0,0,0,0,0,0,0,0,0],sellable:[1,3,2,0,0,1,1,1,1,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {model:'Majesty',kind:'device',p:[4,0,2,8,2,9,5,5,3,3,3,3],s:[0,1,1,1,3,2,3,8,9,9,9,9],sellable:[4,3,3,9,4,18,20,17,11,0,0,0],nonSellable:[0,0,1,1,4,4,4,4,4,0,0,0]},
+  {model:'PicoAlex',kind:'device',p:[1,1,2,1,0,2,1,0,0,0,0,0],s:[0,0,1,0,0,2,1,0,0,0,0,0],sellable:[1,2,3,3,3,2,2,2,2,0,0,0],nonSellable:[0,0,0,2,2,4,4,4,4,0,0,0]},
+  {model:'Pico Andy',kind:'device',p:[0,0,0,0,0,0,0,0,0,0,0,0],s:[0,0,0,1,0,0,0,0,0,0,0,0],sellable:[1,1,1,0,0,0,0,0,0,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {model:'V-Laser',kind:'device',p:[1,4,0,5,0,5,3,5,15,15,15,15],s:[0,0,1,0,0,0,6,12,15,15,15,15],sellable:[1,4,3,8,8,13,10,3,3,0,0,0],nonSellable:[0,0,1,1,1,1,1,1,1,0,0,0]},
+  {model:'Sandro Dual',kind:'device',p:[0,5,6,8,3,5,5,5,3,3,3,3],s:[0,3,2,0,1,2,2,7,12,12,12,12],sellable:[2,7,7,15,13,16,19,17,8,0,0,0],nonSellable:[0,0,1,1,1,1,1,1,1,0,0,0]},
+  {model:'Pastelle Pro',kind:'device',p:[0,2,2,3,0,0,2,2,2,0,0,0],s:[1,2,1,0,0,1,2,2,2,0,0,0],sellable:[2,2,3,6,6,6,4,4,4,0,0,0],nonSellable:[0,0,0,0,0,0,1,1,1,0,0,0]},
+  {model:'Pastelle',kind:'device',p:[0,2,0,0,0,0,0,0,0,0,0,0],s:[0,0,1,0,0,1,0,0,0,0,0,0],sellable:[0,1,1,0,1,0,0,0,0,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]}
+];
+async function seedPsiFromExcel(){
+  if(!confirm(jt('엑셀 PSI 데이터를 불러와 채울까요? 기존 PSI 데이터가 있다면 모두 대체됩니다.','Import Excel PSI data? This replaces any existing PSI data.')))return;
+  var yr=curYr();
+  D.psi=PSI_SEED.map(function(m){
+    var months={};
+    for(var i=0;i<12;i++){var k=yr+'-'+String(i+1).padStart(2,'0');months[k]={p:m.p[i]||0,s:m.s[i]||0,sellable:m.sellable[i]||0,nonSellable:m.nonSellable[i]||0};}
+    return {id:uid(),model:m.model,kind:m.kind,link:'',months:months};
+  });
+  await saveAll(jt('PSI 데이터 불러옴','PSI data imported'));
+}
+function _psiAvgS(m,ym){var keys=Object.keys(m.months).sort();var idx=keys.indexOf(ym);if(idx<0)return 0;var start=Math.max(0,idx-2);var slice=keys.slice(start,idx+1);var sum=slice.reduce(function(a,k){return a+(m.months[k].s||0);},0);return slice.length?sum/slice.length:0;}
+function _psiSpark(m,ym){var keys=Object.keys(m.months).sort();var idx=keys.indexOf(ym);if(idx<0)idx=keys.length-1;var start=Math.max(0,idx-5);var span=keys.slice(start,idx+1);var mx=Math.max(1,...span.map(function(k){return m.months[k].sellable||0;}));return '<div style="display:flex;gap:2px;align-items:flex-end;height:22px">'+span.map(function(k){var v=m.months[k].sellable||0;return '<div title="'+k+': '+v+'" style="width:7px;background:'+(v?'var(--brand)':'#eef1f5')+';height:'+barPct(v,mx)+'%;border-radius:2px"></div>';}).join('')+'</div>';}
+function _psiActual(m){if(!m.link)return '';var n=m.kind==='device'?(D.equipment||[]).filter(function(e){return e.item===m.link&&e.status==='재고';}).length:itemQty(m.link);return '<span class="muted" style="font-size:10px">'+jt('실제재고 ','actual ')+n+'</span>';}
+let fPsiKind='', fPsiYm='';
+function vPsi(){
+  if(!D.psi||!D.psi.length){
+    return head('📊 '+jt('PSI 현황','PSI Status'), jt('모델별 월간 구매(P)·판매(S)·재고 현황 · 물류·재고/장비 이력과 연동','Monthly purchase/sales/inventory by model · linked to Inventory & Equipment'),'')
+      +'<div class="card"><div class="empty" style="padding:40px 20px;text-align:center">'
+      +'<div style="font-size:13.5px;margin-bottom:14px;color:var(--body)">'+jt('아직 PSI 데이터가 없습니다.','No PSI data yet.')+'</div>'
+      +'<button class="btn btn-primary" onclick="seedPsiFromExcel()">📥 '+jt('엑셀 PSI 초기 데이터 불러오기','Import Excel PSI data')+'</button></div></div>';
+  }
+  var allYm=Object.keys((D.psi[0]||{months:{}}).months).sort();
+  var ym=fPsiYm&&allYm.indexOf(fPsiYm)>=0?fPsiYm:(allYm.indexOf(curYm())>=0?curYm():allYm[allYm.length-1]);
+  var L=fPsiKind?D.psi.filter(function(x){return x.kind===fPsiKind;}):D.psi;
+  var totSellable=0,totP=0,totS=0,covs=[];
+  D.psi.forEach(function(m){var mm=m.months[ym]||{p:0,s:0,sellable:0,nonSellable:0};totSellable+=mm.sellable;totP+=mm.p;totS+=mm.s;var avg=_psiAvgS(m,ym);if(avg>0)covs.push(mm.sellable/avg);});
+  var avgCov=covs.length?(covs.reduce(function(a,b){return a+b;},0)/covs.length):0;
+  var pills=['','device','consumable'].map(function(k){var lbl=k===''?jt('전체','All'):k==='device'?jt('기기','Device'):jt('소모품','Consumable');var on=fPsiKind===k;return '<button onclick="fPsiKind=\''+k+'\';render()" style="padding:5px 12px;border-radius:999px;border:1px solid '+(on?'var(--brand)':'var(--line)')+';background:'+(on?'var(--brand)':'#fff')+';color:'+(on?'#fff':'var(--body)')+';font-size:12px;font-weight:'+(on?'700':'500')+';cursor:pointer">'+lbl+'</button>';}).join('');
+  var cards=L.length?L.map(function(m){
+    var mm=m.months[ym]||{p:0,s:0,sellable:0,nonSellable:0};var inv=mm.sellable+mm.nonSellable;
+    return '<div class="ccard" onclick="mPsiModel(\''+m.id+'\')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px"><div style="font-weight:700;color:var(--ink);font-size:13.5px">'+esc(m.model)+'</div>'
+      +'<span class="chip '+(m.kind==='device'?'c-blue':'c-amber')+'" style="font-size:10px;flex-shrink:0">'+(m.kind==='device'?jt('기기','Device'):jt('소모품','Consumable'))+'</span></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;text-align:center">'
+        +'<div><div class="muted" style="font-size:9.5px">P</div><b style="font-size:13px;color:var(--ok)">+'+mm.p.toLocaleString()+'</b></div>'
+        +'<div><div class="muted" style="font-size:9.5px">S</div><b style="font-size:13px;color:var(--brand)">'+mm.s.toLocaleString()+'</b></div>'
+        +'<div><div class="muted" style="font-size:9.5px">'+jt('재고','Inv')+'</div><b style="font-size:13px">'+inv.toLocaleString()+'</b></div>'
+        +'<div><div class="muted" style="font-size:9.5px">'+jt('불량','NG')+'</div><b style="font-size:13px;color:'+(mm.nonSellable?'var(--warn)':'var(--muted)')+'">'+mm.nonSellable.toLocaleString()+'</b></div></div>'
+      +'<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:9px">'+_psiSpark(m,ym)+_psiActual(m)+'</div></div>';
+  }).join(''):'<div class="card"><div class="empty">'+jt('해당 분류 없음','None')+'</div></div>';
+  return head('📊 '+jt('PSI 현황','PSI Status'), jt('모델별 월간 구매(P)·판매(S)·재고 현황 · 카드 클릭 → 월별 수정','Monthly P/S/inventory by model · click a card to edit'),
+    '<select class="sel" onchange="fPsiYm=this.value;render()">'+allYm.map(function(k){return '<option '+(ym===k?'selected':'')+'>'+k+'</option>';}).join('')+'</select>')
+    +'<div class="grid actkpi" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">'
+    +'<div class="statcard"><div class="sv">'+totSellable.toLocaleString()+'</div><div class="sl">'+ym+' '+jt('총 판매가능 재고','Total sellable stock')+'</div></div>'
+    +'<div class="statcard"><div class="sv" style="color:var(--ok)">+'+totP.toLocaleString()+'</div><div class="sl">'+jt('당월 입고(P)','Purchases (P)')+'</div></div>'
+    +'<div class="statcard"><div class="sv" style="color:var(--brand)">'+totS.toLocaleString()+'</div><div class="sl">'+jt('당월 판매(S)','Sales (S)')+'</div></div>'
+    +'<div class="statcard"><div class="sv">'+avgCov.toFixed(1)+'</div><div class="sl">'+jt('평균 재고소진 개월','Avg. months of cover')+'</div></div></div>'
+    +'<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'+pills+'</div>'
+    +'<div class="cgrid">'+cards+'</div></div>';
+}
+function mPsiModel(id){
+  var m=(D.psi||[]).find(function(x){return x.id===id;});if(!m)return;
+  var keys=Object.keys(m.months).sort();
+  var linkOpts=m.kind==='device'
+    ?[...new Set((D.equipment||[]).map(function(e){return e.item;}).filter(Boolean))].sort()
+    :[...new Set((D.items||[]).map(function(i){return i.name;}).filter(Boolean))].sort();
+  var linkSel='<select id="psi-link"><option value="">'+jt('연동 안 함','Not linked')+'</option>'+linkOpts.map(function(n){return '<option '+(m.link===n?'selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>';
+  var rows=keys.map(function(k){var v=m.months[k]||{};
+    return '<tr><td style="font-size:12px;font-weight:600;padding:4px 6px;white-space:nowrap">'+k+'</td>'
+      +'<td><input type="number" id="psi-p-'+k+'" value="'+(v.p||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td>'
+      +'<td><input type="number" id="psi-s-'+k+'" value="'+(v.s||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td>'
+      +'<td><input type="number" id="psi-sl-'+k+'" value="'+(v.sellable||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td>'
+      +'<td><input type="number" id="psi-ns-'+k+'" value="'+(v.nonSellable||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td></tr>';
+  }).join('');
+  openM((m.kind==='device'?jt('기기 PSI 수정 · ','Edit Device PSI · '):jt('소모품 PSI 수정 · ','Edit Consumable PSI · '))+esc(m.model),
+    '<div class="fld"><label>'+jt('연동 품목/장비 (선택 사항)','Linked item/equipment (optional)')+'</label>'+linkSel+'</div>'
+    +'<div style="overflow:auto;max-height:340px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th class="l">'+jt('월','Month')+'</th><th>P</th><th>S</th><th>Sellable</th><th>Non-Sellable</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
+    async()=>{
+      var link=document.getElementById('psi-link').value;
+      var months={};keys.forEach(function(k){months[k]={p:Number(document.getElementById('psi-p-'+k).value)||0,s:Number(document.getElementById('psi-s-'+k).value)||0,sellable:Number(document.getElementById('psi-sl-'+k).value)||0,nonSellable:Number(document.getElementById('psi-ns-'+k).value)||0};});
+      var i=(D.psi||[]).findIndex(function(x){return x.id===id;});if(i>=0){D.psi[i].link=link;D.psi[i].months=months;}
+      return await saveAll(jt('PSI 저장됨','PSI saved'));
+    },
+    async()=>{D.psi=(D.psi||[]).filter(function(x){return x.id!==id;});await saveAll(jt('삭제됨','Deleted'));}
+  );
+}
 
 // ── CRM: 딜 파이프라인 ──
 let dragDeal=null;
