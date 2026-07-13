@@ -260,7 +260,7 @@ function totalOut(){return (D.sales||[]).reduce((a,s)=>a+outAmt(s),0);}
 function agingBucket(s){const o=outAmt(s);if(o<=0)return null;const d=daysBetween(s.date||today(),today());return d>=90?'90+':d>=60?'60+':d>=30?'30+':'30내';}
 function fundsBalAcc(name){const acc=(D.accounts||[]).find(a=>a.name===name);let b=acc?(+acc.opening||0):0;(D.funds||[]).forEach(f=>{if((f.account||'주거래계좌')!==name)return;b+=(f.kind==='입금'?1:-1)*(+f.amt||0);});return b;}
 function fundsBal(){return (D.accounts||[]).reduce((a,x)=>a+fundsBalAcc(x.name),0);}
-function itemQty(name){const it=(D.items||[]).find(i=>i.name===name);let q=it?(+it.qty0||0):0;(D.moves||[]).forEach(m=>{if(m.item===name)q+=(m.type==='입고'?1:-1)*(+m.qty||0);});return q;}
+function itemQty(name){const it=(D.items||[]).find(i=>i.name===name);let q=it?(+it.qty0||0):0;(D.moves||[]).forEach(m=>{if(m.item===name)q+=(m.type==='입고'?1:-1)*(+m.qty||0);});q+=(D.equipment||[]).filter(e=>e.item===name&&e.status==='재고').length;return q;}
 
 // ── 라우팅 ──
 function setView(v){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);}
@@ -326,7 +326,7 @@ function vDash(){
       <div class="kpi" onclick="setView('sales')" style="cursor:pointer"><div class="v">${fm(pm[mo]||0)}</div><div class="l">이번달 수금</div></div>
       <div class="kpi" onclick="setView('orders')" style="cursor:pointer"><div class="v">${backlog.length}</div><div class="l">진행 수주</div><div class="s">${fmS(backAmt)}</div></div>
       <div class="kpi" onclick="setView('ar')" style="cursor:pointer"><div class="v" style="color:${ag['90+']?'var(--bad)':'var(--ink)'}">${fmS(ag['90+'])}</div><div class="l">90일+ 장기미수</div></div>
-      <div class="kpi" onclick="setView('inv')" style="cursor:pointer"><div class="v" style="color:${low.length?'var(--bad)':'var(--ink)'}">${low.length}</div><div class="l">재고 부족 품목</div></div>
+      <div class="kpi" onclick="setView('inv')" style="cursor:pointer"><div class="v" style="color:${low.length?'var(--bad)':'var(--ink)'}">${low.length}</div><div class="l">재고 부족 장비</div></div>
       <div class="kpi" onclick="setView('exp')" style="cursor:pointer"><div class="v">${fm(eM)}</div><div class="l">이번달 비용</div><div class="s">${fkrw(eM)}</div></div>
     </div>
     <div class="card" style="margin-bottom:14px"><div class="sect"><span>📊 월별 매출 vs 수금 <span class="muted" style="font-weight:500;font-size:11.5px">막대=매출(진), 수금(연) · 점선=목표</span></span><span class="muted" style="font-size:12px">${yr}년</span></div><div class="combo">${combo}</div></div>
@@ -504,38 +504,58 @@ function openClient(name){
 }
 
 // ── 물류·재고 ──
+function _needsBoncheCleanup(){
+  const re=/본체/;
+  return (D.items||[]).some(i=>re.test(i.name))
+    ||(D.moves||[]).some(m=>re.test(m.item))
+    ||(D.equipment||[]).some(e=>re.test(e.item))
+    ||(D.sales||[]).some(s=>re.test(s.product))
+    ||(D.orders||[]).some(o=>re.test(o.product));
+}
+async function cleanupBoncheNames(){
+  if(!confirm('장비·매출·수주 이름에서 "본체"를 제거할까요? (예: "Oligio X 본체"→"Oligio X") 되돌릴 수 없습니다.'))return;
+  const re=/\s*본체/g;
+  const strip=s=>s?s.replace(re,''):s;
+  (D.items||[]).forEach(i=>{i.name=strip(i.name);});
+  (D.moves||[]).forEach(m=>{m.item=strip(m.item);});
+  (D.equipment||[]).forEach(e=>{e.item=strip(e.item);});
+  (D.sales||[]).forEach(s=>{s.product=strip(s.product);});
+  (D.orders||[]).forEach(o=>{o.product=strip(o.product);});
+  await saveAll('"본체" 제거 완료');
+}
 function vInv(){
   const items=(D.items||[]);
   const iRows=items.length?items.map(i=>{const q=itemQty(i.name);const low=q<(+i.safety||0);
-    return `<tr onclick="mItem('${i.id}')"><td class="l"><b style="color:var(--ink)">${esc(i.name)}</b></td><td>${q.toLocaleString()} ${esc(i.unit||'')}</td><td class="muted">${(+i.safety||0).toLocaleString()}</td><td class="l">${esc(i.loc||'-')}</td><td class="l">${low?'<span class="chip c-red">부족</span>':'<span class="chip c-green">정상</span>'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">품목이 없습니다</td></tr>';
+    return `<tr onclick="mItem('${i.id}')"><td class="l"><b style="color:var(--ink)">${esc(i.name)}</b></td><td>${q.toLocaleString()} ${esc(i.unit||'')}</td><td class="muted">${(+i.safety||0).toLocaleString()}</td><td class="l">${esc(i.loc||'-')}</td><td class="l">${low?'<span class="chip c-red">부족</span>':'<span class="chip c-green">정상</span>'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">장비가 없습니다</td></tr>';
   const mv=(D.moves||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,50);
   const mRows=mv.length?mv.map(m=>`<tr onclick="mMove('${m.id}')"><td class="l">${m.date}</td><td class="l">${m.type==='입고'?'<span class="chip c-green">입고</span>':'<span class="chip c-amber">출고</span>'}</td><td class="l"><b style="color:var(--ink)">${esc(m.item)}</b></td><td>${(+m.qty||0).toLocaleString()}</td><td class="l muted">${esc(m.ref||'')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">입출고 이력 없음</td></tr>';
-  return head('📦 물류 · 재고','현재고 = 기초 + 입고 − 출고 자동 계산',
-    `<button class="btn" onclick="mItemImport()"><i class="bi bi-file-earmark-spreadsheet"></i> 엑셀로 품목 등록</button><button class="btn" onclick="mItem()">+ 품목</button><button class="btn btn-primary" onclick="mMove()">+ 입출고</button>`)
+  return head('📦 물류 · 재고','현재고 = 기초 + 입고 − 출고 + 장비 이력 재고 자동 계산',
+    (_needsBoncheCleanup()?`<button class="btn" style="color:var(--warn)" onclick="cleanupBoncheNames()">🧹 이름에서 "본체" 제거</button>`:'')
+    +`<button class="btn" onclick="mItemImport()"><i class="bi bi-file-earmark-spreadsheet"></i> 엑셀로 장비 등록</button><button class="btn" onclick="mItem()">+ 장비</button><button class="btn btn-primary" onclick="mMove()">+ 입출고</button>`)
     +`<div class="grid" style="grid-template-columns:1fr 1.15fr">
-      <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 16px 4px"><span>📦 품목별 재고</span></div><table><thead><tr><th class="l">품목</th><th>현재고</th><th>안전</th><th class="l">위치</th><th class="l">상태</th></tr></thead><tbody>${iRows}</tbody></table></div>
-      <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 16px 4px"><span>🚚 입출고 이력</span></div><table><thead><tr><th class="l">날짜</th><th class="l">구분</th><th class="l">품목</th><th>수량</th><th class="l">참조</th></tr></thead><tbody>${mRows}</tbody></table></div></div></div>`;
+      <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 16px 4px"><span>📦 장비별 재고</span></div><table><thead><tr><th class="l">장비</th><th>현재고</th><th>안전</th><th class="l">위치</th><th class="l">상태</th></tr></thead><tbody>${iRows}</tbody></table></div>
+      <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 16px 4px"><span>🚚 입출고 이력</span></div><table><thead><tr><th class="l">날짜</th><th class="l">구분</th><th class="l">장비</th><th>수량</th><th class="l">참조</th></tr></thead><tbody>${mRows}</tbody></table></div></div></div>`;
 }
 function mItem(id){const it=id?(D.items||[]).find(x=>x.id===id):{name:'',unit:'개',qty0:'',safety:'',loc:''};
-  openM(id?'품목 수정':'품목 추가',
-    `<div class="fld"><label>품목명</label><input id="f-name" value="${esc(it.name)}"></div>
+  openM(id?'장비 수정':'장비 추가',
+    `<div class="fld"><label>장비명</label><input id="f-name" value="${esc(it.name)}"></div>
     <div class="fr3"><div class="fld"><label>기초 수량</label><input id="f-q0" type="number" value="${it.qty0||''}"></div><div class="fld"><label>단위</label><input id="f-unit" value="${esc(it.unit||'개')}"></div><div class="fld"><label>안전재고</label><input id="f-safe" type="number" value="${it.safety||''}"></div></div>
     <div class="fld"><label>보관 위치</label><input id="f-loc" value="${esc(it.loc||'')}"></div>`,
     async()=>{const g=x=>document.getElementById(x).value;const rec={id:id||uid(),name:g('f-name').trim(),qty0:Number(g('f-q0'))||0,unit:g('f-unit').trim(),safety:Number(g('f-safe'))||0,loc:g('f-loc').trim()};
-      if(!rec.name){toast('품목명을 입력하세요');return false;}
+      if(!rec.name){toast('장비명을 입력하세요');return false;}
       const i=(D.items||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.items[i]=rec;else D.items.push(rec);return await saveAll();},
     id?async()=>{D.items=D.items.filter(x=>x.id!==id);await saveAll('삭제됨');}:null);
 }
 function xlsxTemplateItems(){
-  const ws=XLSX.utils.aoa_to_sheet([['품목명','기초수량','단위','안전재고','위치'],['예: Oligio X 본체',5,'대',3,'창고 A-1']]);
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'품목');
-  XLSX.writeFile(wb,'품목_등록_템플릿.xlsx');
+  const ws=XLSX.utils.aoa_to_sheet([['장비명','기초수량','단위','안전재고','위치'],['예: Oligio X',5,'대',3,'창고 A-1']]);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'장비');
+  XLSX.writeFile(wb,'장비_등록_템플릿.xlsx');
 }
 let _impItems=null;
 function mItemImport(){
   _impItems=null;
-  openM('엑셀로 품목 일괄 등록',
-    `<div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">엑셀 첫 줄은 제목(품목명·기초수량·단위·안전재고·위치)이어야 합니다. 이미 있는 품목명은 값이 덮어써집니다.</div>
+  openM('엑셀로 장비 일괄 등록',
+    `<div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">엑셀 첫 줄은 제목(장비명·기초수량·단위·안전재고·위치)이어야 합니다. 이미 있는 장비명은 값이 덮어써집니다.</div>
     <button class="btn btn-sm" type="button" onclick="xlsxTemplateItems()"><i class="bi bi-download"></i> 템플릿 다운로드</button>
     <div class="fld" style="margin-top:12px"><label>엑셀 파일 (.xlsx / .csv)</label><input type="file" id="f-xlsx" accept=".xlsx,.xls,.csv" onchange="handleXlsxItems(event)"></div>
     <div id="xlsx-preview" class="muted" style="font-size:12.5px;margin-top:8px"></div>`,
@@ -560,14 +580,14 @@ function handleXlsxItems(e){
       const norm=k=>String(k||'').replace(/\s/g,'');
       const pick=(row,names)=>{for(const k of Object.keys(row)){if(names.indexOf(norm(k))>=0)return row[k];}return '';};
       const items=rows.map(row=>({
-        name:String(pick(row,['품목명','품목','name'])).trim(),
+        name:String(pick(row,['장비명','장비','품목명','품목','name'])).trim(),
         qty0:Number(pick(row,['기초수량','기초재고','수량','qty0']))||0,
         unit:String(pick(row,['단위','unit'])||'개').trim()||'개',
         safety:Number(pick(row,['안전재고','안전','safety']))||0,
         loc:String(pick(row,['위치','보관위치','loc'])||'').trim(),
       })).filter(r=>r.name);
       _impItems=items.length?items:null;
-      if(prev)prev.textContent=items.length?(items.length+'건 인식됨: '+items.slice(0,5).map(x=>x.name).join(', ')+(items.length>5?' 외':'')):'인식된 품목이 없습니다 — 첫 줄(제목) 확인';
+      if(prev)prev.textContent=items.length?(items.length+'건 인식됨: '+items.slice(0,5).map(x=>x.name).join(', ')+(items.length>5?' 외':'')):'인식된 장비가 없습니다 — 첫 줄(제목) 확인';
     }catch(err){
       _impItems=null;
       if(prev)prev.textContent='파일을 읽을 수 없습니다: '+err.message;
@@ -579,10 +599,10 @@ function mMove(id){const m=id?(D.moves||[]).find(x=>x.id===id):{date:today(),typ
   const opts='<option value="">선택…</option>'+(D.items||[]).map(i=>`<option ${m.item===i.name?'selected':''}>${esc(i.name)}</option>`).join('');
   openM(id?'입출고 수정':'입출고 등록',
     `<div class="fr"><div class="fld"><label>날짜</label><input id="f-date" type="date" value="${m.date||today()}"></div><div class="fld"><label>구분</label><select id="f-type"><option ${m.type==='입고'?'selected':''}>입고</option><option ${m.type==='출고'?'selected':''}>출고</option></select></div></div>
-    <div class="fr"><div class="fld"><label>품목</label><select id="f-item">${opts}</select></div><div class="fld"><label>수량</label><input id="f-qty" type="number" value="${m.qty||''}"></div></div>
+    <div class="fr"><div class="fld"><label>장비</label><select id="f-item">${opts}</select></div><div class="fld"><label>수량</label><input id="f-qty" type="number" value="${m.qty||''}"></div></div>
     <div class="fld"><label>참조 (선적/거래처)</label><input id="f-ref" value="${esc(m.ref||'')}"></div>`,
     async()=>{const g=x=>document.getElementById(x).value;const rec={id:id||uid(),date:g('f-date'),type:g('f-type'),item:g('f-item'),qty:Number(g('f-qty'))||0,ref:g('f-ref').trim()};
-      if(!rec.item){toast('품목을 선택하세요');return false;}
+      if(!rec.item){toast('장비를 선택하세요');return false;}
       const i=(D.moves||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.moves[i]=rec;else D.moves.push(rec);return await saveAll();},
     id?async()=>{D.moves=D.moves.filter(x=>x.id!==id);await saveAll('삭제됨');}:null);
 }
