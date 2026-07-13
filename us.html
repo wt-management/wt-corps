@@ -894,6 +894,29 @@ function openClient(name){
 
 // ── 물류·재고 ──
 let fInvFilter='';
+function _needsBoncheCleanup(){
+  var re=/본체/;
+  return (D.items||[]).some(function(i){return re.test(i.name);})
+    ||(D.moves||[]).some(function(m){return re.test(m.item);})
+    ||(D.equipment||[]).some(function(e){return re.test(e.item);})
+    ||(D.sales||[]).some(function(s){return re.test(s.product);})
+    ||(D.orders||[]).some(function(o){return re.test(o.product);})
+    ||(D.deals||[]).some(function(d){return re.test(d.product);})
+    ||(D.psi||[]).some(function(p){return re.test(p.model)||re.test(p.link||'');});
+}
+async function cleanupBoncheNames(){
+  if(!confirm(jt('품목·장비·매출·수주·딜·PSI 이름에서 "본체"를 제거할까요? (예: "Oligio X 본체"→"Oligio X") 되돌릴 수 없습니다.','Remove the "본체" suffix from item/equipment/sales/order/deal/PSI names? Cannot be undone.')))return;
+  var re=/\s*본체/g;
+  var strip=function(s){return s?s.replace(re,''):s;};
+  (D.items||[]).forEach(function(i){i.name=strip(i.name);});
+  (D.moves||[]).forEach(function(m){m.item=strip(m.item);});
+  (D.equipment||[]).forEach(function(e){e.item=strip(e.item);});
+  (D.sales||[]).forEach(function(s){s.product=strip(s.product);});
+  (D.orders||[]).forEach(function(o){o.product=strip(o.product);});
+  (D.deals||[]).forEach(function(d){d.product=strip(d.product);});
+  (D.psi||[]).forEach(function(p){p.model=strip(p.model);p.link=strip(p.link);});
+  await saveAll(jt('"본체" 제거 완료','"본체" removed'));
+}
 function vInv(){
   var items=(D.items||[]);
   var low=items.filter(function(i){return itemQty(i.name)<(+i.safety||0);});
@@ -912,7 +935,8 @@ function vInv(){
     :movesAll.slice(0,40);
   var mRows=mv.length?mv.map(function(m){return `<tr onclick="mMove('${m.id}')"><td class="l">${m.date}</td><td class="l">${m.type==='입고'?'<span class="chip c-green"><i class="bi bi-box-arrow-in-down"></i> '+jt('입고','IN')+'</span>':'<span class="chip c-amber"><i class="bi bi-box-arrow-up"></i> '+jt('출고','OUT')+'</span>'}</td><td class="l"><b style="color:var(--ink)">${trUser(m.item)}</b></td><td><b>${(+m.qty||0).toLocaleString()}</b></td><td class="l muted">${trUser(m.ref)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">'+jt('입출고 이력 없음','No movements')+'</td></tr>';
   return head('📦 '+jt('물류 · 재고','Inventory'), jt('품목 = 취급 제품 목록 · 입출고 = 재고 이동 이력 · 품목 클릭 → 이력·입출고','Items = product master · Moves = stock in/out · click an item for history'),
-    `<button class="btn" onclick="setView('psi')">📊 ${jt('PSI 보기','View PSI')}</button><button class="btn" onclick="mItem()">+ ${jt('품목','Item')}</button><button class="btn" style="color:#15803d;font-weight:700" onclick="mMove(null,{type:'입고'})">📥 ${jt('입고','Receive')}</button><button class="btn btn-primary" onclick="mMove(null,{type:'출고'})">📤 ${jt('출고','Ship')}</button>`)
+    (_needsBoncheCleanup()?`<button class="btn" style="color:var(--warn)" onclick="cleanupBoncheNames()">🧹 ${jt('이름에서 "본체" 제거','Strip "본체" from names')}</button>`:'')
+    +`<button class="btn" onclick="setView('psi')">📊 ${jt('PSI 보기','View PSI')}</button><button class="btn" onclick="mItem()">+ ${jt('품목','Item')}</button><button class="btn" style="color:#15803d;font-weight:700" onclick="mMove(null,{type:'입고'})">📥 ${jt('입고','Receive')}</button><button class="btn btn-primary" onclick="mMove(null,{type:'출고'})">📤 ${jt('출고','Ship')}</button>`)
     +`<div class="grid actkpi" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
       <div class="statcard${fInvFilter===''?' on':''}" style="border-top:3px solid #4f46e5" onclick="fInvFilter='';render()"><div class="sv">${items.length}</div><div class="sl">${jt('등록 품목','Items')}</div></div>
       <div class="statcard${fInvFilter==='low'?' on':''}" style="border-top:3px solid #dc2626" onclick="fInvFilter=fInvFilter==='low'?'':'low';render()"><div class="sv" style="color:${low.length?'var(--bad)':'var(--ink)'}">${low.length}</div><div class="sl">${jt('안전재고 미달','Low stock')}</div></div>
