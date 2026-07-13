@@ -935,7 +935,7 @@ function vInv(){
   var mv=fInvFilter==='in'?movesAll.filter(function(m){return m.type==='입고'&&ym(m.date)===cm;})
     :fInvFilter==='out'?movesAll.filter(function(m){return m.type==='출고'&&ym(m.date)===cm;})
     :movesAll.slice(0,40);
-  var mRows=mv.length?mv.map(function(m){return `<tr onclick="mMove('${m.id}')"><td class="l">${m.date}</td><td class="l">${m.type==='입고'?'<span class="chip c-green"><i class="bi bi-box-arrow-in-down"></i> '+jt('입고','IN')+'</span>':'<span class="chip c-amber"><i class="bi bi-box-arrow-up"></i> '+jt('출고','OUT')+'</span>'}</td><td class="l"><b style="color:var(--ink)">${trUser(m.item)}</b></td><td><b>${(+m.qty||0).toLocaleString()}</b></td><td class="l muted">${trUser(m.ref)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">'+jt('입출고 이력 없음','No movements')+'</td></tr>';
+  var mRows=mv.length?mv.map(function(m){return `<tr onclick="mMove('${m.id}')"><td class="l">${m.date}</td><td class="l">${m.type==='입고'?'<span class="chip c-green"><i class="bi bi-box-arrow-in-down"></i> '+jt('입고','IN')+'</span>':'<span class="chip c-amber"><i class="bi bi-box-arrow-up"></i> '+jt('출고','OUT')+'</span>'}</td><td class="l" style="white-space:normal"><b style="color:var(--ink)">${trUser(m.item)}</b></td><td><b>${(+m.qty||0).toLocaleString()}</b></td><td class="l muted" style="white-space:normal">${trUser(m.ref)}</td><td class="l" style="white-space:normal;padding:4px 6px" onclick="event.stopPropagation()"><input type="text" value="${esc(m.memo||'')}" placeholder="${jt('메모 입력','Add a note')}" onchange="saveMoveMemo('${m.id}',this.value)" style="width:100%;border:1px solid transparent;background:transparent;padding:4px 5px;border-radius:5px;font-size:11px;color:var(--body)" onfocus="this.style.borderColor='var(--line)';this.style.background='#fff'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"></td></tr>`;}).join(''):'<tr><td colspan="6" class="empty">'+jt('입출고 이력 없음','No movements')+'</td></tr>';
   return head('📦 '+jt('물류 · 재고','Inventory'), jt('품목 = 취급 제품 목록 · 입출고 = 재고 이동 이력 · 품목 클릭 → 이력·입출고','Items = product master · Moves = stock in/out · click an item for history'),
     (_needsBoncheCleanup()?`<button class="btn" style="color:var(--warn)" onclick="cleanupBoncheNames()">🧹 ${jt('이름에서 "본체" 제거','Strip "본체" from names')}</button>`:'')
     +`<button class="btn" onclick="setView('psi')">📊 ${jt('PSI 보기','View PSI')}</button><button class="btn" onclick="mItem()">+ ${jt('품목','Item')}</button><button class="btn" style="color:#15803d;font-weight:700" onclick="mMove(null,{type:'입고'})">📥 ${jt('입고','Receive')}</button><button class="btn btn-primary" onclick="mMove(null,{type:'출고'})">📤 ${jt('출고','Ship')}</button>`)
@@ -947,7 +947,7 @@ function vInv(){
     ${_shipSection()}
     <div class="sect" style="margin-bottom:10px"><span>📦 ${jt('품목별 재고','Stock by Item')}</span></div>
     <div class="cgrid" style="margin-bottom:18px">${cards}</div>
-    <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 18px 4px"><span>🚚 ${jt('입출고 이력','Movements')} <span class="muted" style="font-weight:500;font-size:11px">${(fInvFilter==='in'||fInvFilter==='out')?jt('이번달만','this month'):jt('최근 40건','last 40')}</span></span></div><table><thead><tr><th class="l">${jt('날짜','Date')}</th><th class="l">${jt('구분','Type')}</th><th class="l">${jt('품목','Item')}</th><th>${jt('수량','Qty')}</th><th class="l">${jt('참조','Ref')}</th></tr></thead><tbody>${mRows}</tbody></table></div></div>`;
+    <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 18px 4px"><span>🚚 ${jt('입출고 이력','Movements')} <span class="muted" style="font-weight:500;font-size:11px">${(fInvFilter==='in'||fInvFilter==='out')?jt('이번달만','this month'):jt('최근 40건','last 40')}</span></span></div><table style="table-layout:fixed"><colgroup><col style="width:100px"><col style="width:90px"><col style="width:170px"><col style="width:70px"><col style="width:170px"><col></colgroup><thead><tr><th class="l">${jt('날짜','Date')}</th><th class="l">${jt('구분','Type')}</th><th class="l">${jt('품목','Item')}</th><th>${jt('수량','Qty')}</th><th class="l">${jt('참조','Ref')}</th><th class="l">${jt('메모','Memo')}</th></tr></thead><tbody>${mRows}</tbody></table></div></div>`;
 }
 function mItem(id){const it=id?(D.items||[]).find(x=>x.id===id):{name:'',unit:'개',qty0:'',safety:'',loc:''};
   openM(id?'품목 수정':'품목 추가',
@@ -958,6 +958,11 @@ function mItem(id){const it=id?(D.items||[]).find(x=>x.id===id):{name:'',unit:'�
       if(!rec.name){toast('품목명을 입력하세요');return false;}
       const i=(D.items||[]).findIndex(x=>x.id===rec.id);if(i>=0)D.items[i]=rec;else D.items.push(rec);return await saveAll();},
     id?async()=>{D.items=D.items.filter(x=>x.id!==id);await saveAll('삭제됨');}:null);
+}
+async function saveMoveMemo(id,val){
+  var i=(D.moves||[]).findIndex(function(x){return x.id===id;});if(i<0)return;
+  D.moves[i].memo=val.trim();
+  await saveAll(jt('메모 저장됨','Note saved'));
 }
 function mMove(id,preset){preset=preset||{};
   var m=id?(D.moves||[]).find(x=>x.id===id):{date:today(),type:preset.type||'입고',item:preset.item||'',qty:'',ref:'',serial:'',client:''};
@@ -972,7 +977,7 @@ function mMove(id,preset){preset=preset||{};
     <div id="ser-pick"></div>
     <div class="fld"><label>${jt('참조 (선적번호 / 사유)','Ref (shipment / reason)')}</label><input id="f-ref" value="${esc(m.ref||'')}" placeholder="${jt('예: 선적 SH-2607 / 설치','e.g. SH-2607 / install')}"></div>`,
     async()=>{const g=x=>{var e=document.getElementById(x);return e?e.value:'';};
-      const rec={id:id||uid(),date:g('f-date'),type:g('f-type'),item:g('f-item'),qty:Number(g('f-qty'))||0,ref:g('f-ref').trim(),serial:'',client:''};
+      const rec={id:id||uid(),date:g('f-date'),type:g('f-type'),item:g('f-item'),qty:Number(g('f-qty'))||0,ref:g('f-ref').trim(),serial:'',client:'',memo:m.memo||''};
       if(!rec.item){toast(jt('품목을 선택하세요','Select an item'));return false;}
       var checked=[].slice.call(document.querySelectorAll('.serck:checked')).map(function(x){return x.value;});
       if(rec.type==='출고'){rec.client=g('f-client');if(checked.length){rec.serial=checked.join(', ');rec.qty=checked.length;}}
