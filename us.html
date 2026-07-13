@@ -1293,7 +1293,7 @@ function vPsi(){
       +'<td><b>'+inv.toLocaleString()+'</b></td>'
       +'<td style="color:'+(mm.nonSellable?'var(--warn)':'var(--muted)')+'">'+mm.nonSellable.toLocaleString()+'</td>'
       +'<td class="l muted" style="font-size:11px">'+(m.link?esc(m.link):'-')+'</td>'
-      +'<td class="l muted" style="font-size:11px;white-space:normal">'+(m.remark?trUser(m.remark):'-')+'</td></tr>';
+      +'<td class="l" style="white-space:normal;padding:4px 6px" onclick="event.stopPropagation()"><input type="text" value="'+esc(m.remark||'')+'" placeholder="'+jt('메모 입력','Add a note')+'" onchange="savePsiRemark(\''+m.id+'\',this.value)" style="width:100%;border:1px solid transparent;background:transparent;padding:4px 5px;border-radius:5px;font-size:11px;color:var(--body)" onfocus="this.style.borderColor=\'var(--line)\';this.style.background=\'#fff\'" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\'"></td></tr>';
   }).join(''):'<tr><td colspan="8" class="empty">'+jt('해당 분류 없음','None')+'</td></tr>';
   var listHtml='<div class="card" style="padding:0;overflow:auto"><table style="table-layout:fixed"><colgroup><col style="width:140px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:130px"><col></colgroup><thead><tr><th class="l">'+jt('모델','Model')+'</th><th class="l">'+jt('종류','Kind')+'</th><th>P</th><th>S</th><th>'+jt('재고','Inv')+'</th><th>'+jt('불량','NG')+'</th><th class="l">'+jt('연동','Linked')+'</th><th class="l">'+jt('비고','Remark')+'</th></tr></thead><tbody>'+listRows+'</tbody></table></div>';
   return head('📊 '+jt('PSI 현황','PSI Status'), jt('모델별 월간 구매(P)·판매(S)·재고 현황 · 카드/행 클릭 → 월별 수정','Monthly P/S/inventory by model · click a card or row to edit'),
@@ -1306,6 +1306,11 @@ function vPsi(){
     +'<div class="statcard"><div class="sv">'+avgCov.toFixed(1)+'</div><div class="sl">'+jt('평균 재고소진 개월','Avg. months of cover')+'</div></div></div>'
     +'<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'+pills+'</div>'
     +(fPsiView==='list'?listHtml:'<div class="cgrid">'+cards+'</div>')+'</div>';
+}
+async function savePsiRemark(id,val){
+  var i=(D.psi||[]).findIndex(function(x){return x.id===id;});if(i<0)return;
+  D.psi[i].remark=val.trim();
+  await saveAll(jt('메모 저장됨','Note saved'));
 }
 function mPsiModel(id){
   var m=(D.psi||[]).find(function(x){return x.id===id;});if(!m)return;
