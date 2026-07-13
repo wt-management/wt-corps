@@ -622,9 +622,8 @@ function vAsset(){
   const svc=all.filter(e=>['AS','반품'].indexOf(e.status)>=0).length;
   const itemsU=Object.keys(all.reduce((a,e)=>{if(e.item)a[e.item]=1;return a;},{}));
   const L=_assetList();
-  const tr='overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
   const rows=L.length?L.map(e=>{const col=ASSET_ST[e.status]||'#64748b';const loc=e.status==='재고'?'🏭 창고':(e.client?('🏥 '+esc(e.client)):'출고됨');
-    return `<tr onclick="openAsset('${e.id}')" style="cursor:pointer"><td class="l" style="${tr}" title="${esc(e.serial)}"><b style="color:var(--ink)">🔖 ${esc(e.serial)}</b></td><td class="l" style="${tr}" title="${esc(e.item)}">${esc(e.item)}</td><td class="l"><span class="chip" style="background:${col}1a;color:${col};font-weight:700">${esc(e.status)}</span></td><td class="l" style="${tr}" title="${esc(e.client)}">${loc}</td><td class="l muted" style="${tr}" title="${esc(e.note)}">${esc(e.note)||'-'}</td></tr>`;
+    return `<tr onclick="openAsset('${e.id}')" style="cursor:pointer"><td class="l"><b style="color:var(--ink)">🔖 ${esc(e.serial)}</b></td><td class="l">${esc(e.item)}</td><td class="l"><span class="chip" style="background:${col}1a;color:${col};font-weight:700">${esc(e.status)}</span></td><td class="l">${loc}</td><td class="l muted">${esc(e.note)||'-'}</td></tr>`;
   }).join(''):'<tr><td colspan="5" class="empty">장비가 없습니다 — 신규 등록 버튼으로 추가하세요</td></tr>';
   const stChips=['','재고','출고','설치','AS','반품'].map(s=>{const on=fAssetSt===s;const c=s?ASSET_ST[s]:'#4f46e5';return `<button onclick="setAssetF('st','${s}')" style="padding:5px 12px;border-radius:999px;border:1px solid ${on?c:'var(--line)'};background:${on?c:'#fff'};color:${on?'#fff':'var(--body)'};font-size:12px;font-weight:${on?'700':'500'};cursor:pointer">${s===''?'전체':s}</button>`;}).join('');
   const itemOpts='<option value="">전체 품목</option>'+itemsU.map(i=>`<option ${fAssetItem===i?'selected':''}>${esc(i)}</option>`).join('');
@@ -636,7 +635,7 @@ function vAsset(){
       <div class="kpi"><div class="v" style="color:var(--ok)">${atClient}</div><div class="l">고객사 보유</div></div>
       <div class="kpi"><div class="v" style="color:${svc?'var(--bad)':'var(--ink)'}">${svc}</div><div class="l">AS · 반품</div></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><div style="display:flex;gap:5px;flex-wrap:wrap">${stChips}</div><select onchange="setAssetF('item',this.value)" style="margin-left:auto">${itemOpts}</select><input placeholder="시리얼·고객사 검색" value="${esc(fAssetQ)}" oninput="fAssetQ=this.value" onkeydown="if(event.key==='Enter')render()" style="min-width:160px"></div>
-    <div class="card" style="padding:0;overflow:auto"><table style="table-layout:fixed"><colgroup><col style="width:140px"><col style="width:190px"><col style="width:70px"><col style="width:160px"><col></colgroup><thead><tr><th class="l">시리얼</th><th class="l">품목</th><th class="l">상태</th><th class="l">현재 위치</th><th class="l">메모</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    <div class="card" style="padding:0;overflow:auto"><table style="width:auto"><thead><tr><th class="l">시리얼</th><th class="l">품목</th><th class="l">상태</th><th class="l">현재 위치</th><th class="l">메모</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function openAsset(id){
   const e=(D.equipment||[]).find(x=>x.id===id);if(!e)return;
