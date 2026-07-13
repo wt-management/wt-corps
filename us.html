@@ -1256,7 +1256,7 @@ async function seedPsiFromExcel(){
 function _psiAvgS(m,ym){var keys=Object.keys(m.months).sort();var idx=keys.indexOf(ym);if(idx<0)return 0;var start=Math.max(0,idx-2);var slice=keys.slice(start,idx+1);var sum=slice.reduce(function(a,k){return a+(m.months[k].s||0);},0);return slice.length?sum/slice.length:0;}
 function _psiSpark(m,ym){var keys=Object.keys(m.months).sort();var idx=keys.indexOf(ym);if(idx<0)idx=keys.length-1;var start=Math.max(0,idx-5);var span=keys.slice(start,idx+1);var mx=Math.max(1,...span.map(function(k){return m.months[k].sellable||0;}));return '<div style="display:flex;gap:2px;align-items:flex-end;height:22px">'+span.map(function(k){var v=m.months[k].sellable||0;return '<div title="'+k+': '+v+'" style="width:7px;background:'+(v?'var(--brand)':'#eef1f5')+';height:'+barPct(v,mx)+'%;border-radius:2px"></div>';}).join('')+'</div>';}
 function _psiActual(m){if(!m.link)return '';var n=m.kind==='device'?(D.equipment||[]).filter(function(e){return e.item===m.link&&e.status==='재고';}).length:itemQty(m.link);return '<span class="muted" style="font-size:10px">'+jt('실제재고 ','actual ')+n+'</span>';}
-let fPsiKind='', fPsiYm='';
+let fPsiKind='', fPsiYm='', fPsiView='card';
 function vPsi(){
   if(!D.psi||!D.psi.length){
     return head('📊 '+jt('PSI 현황','PSI Status'), jt('모델별 월간 구매(P)·판매(S)·재고 현황 · 물류·재고/장비 이력과 연동','Monthly purchase/sales/inventory by model · linked to Inventory & Equipment'),'')
@@ -1267,10 +1267,11 @@ function vPsi(){
   var allYm=Object.keys((D.psi[0]||{months:{}}).months).sort();
   var ym=fPsiYm&&allYm.indexOf(fPsiYm)>=0?fPsiYm:(allYm.indexOf(curYm())>=0?curYm():allYm[allYm.length-1]);
   var L=fPsiKind?D.psi.filter(function(x){return x.kind===fPsiKind;}):D.psi;
-  var totSellable=0,totP=0,totS=0,covs=[];
-  D.psi.forEach(function(m){var mm=m.months[ym]||{p:0,s:0,sellable:0,nonSellable:0};totSellable+=mm.sellable;totP+=mm.p;totS+=mm.s;var avg=_psiAvgS(m,ym);if(avg>0)covs.push(mm.sellable/avg);});
+  var totSellDevice=0,totSellConsumable=0,totP=0,totS=0,covs=[];
+  D.psi.forEach(function(m){var mm=m.months[ym]||{p:0,s:0,sellable:0,nonSellable:0};if(m.kind==='device')totSellDevice+=mm.sellable;else totSellConsumable+=mm.sellable;totP+=mm.p;totS+=mm.s;var avg=_psiAvgS(m,ym);if(avg>0)covs.push(mm.sellable/avg);});
   var avgCov=covs.length?(covs.reduce(function(a,b){return a+b;},0)/covs.length):0;
   var pills=['','device','consumable'].map(function(k){var lbl=k===''?jt('전체','All'):k==='device'?jt('기기','Device'):jt('소모품','Consumable');var on=fPsiKind===k;return '<button onclick="fPsiKind=\''+k+'\';render()" style="padding:5px 12px;border-radius:999px;border:1px solid '+(on?'var(--brand)':'var(--line)')+';background:'+(on?'var(--brand)':'#fff')+';color:'+(on?'#fff':'var(--body)')+';font-size:12px;font-weight:'+(on?'700':'500')+';cursor:pointer">'+lbl+'</button>';}).join('');
+  var viewSeg='<div class="seg">'+[['card',jt('카드형','Cards')],['list',jt('리스트형','List')]].map(function(x){return '<button class="'+(fPsiView===x[0]?'on':'')+'" onclick="fPsiView=\''+x[0]+'\';render()">'+x[1]+'</button>';}).join('')+'</div>';
   var cards=L.length?L.map(function(m){
     var mm=m.months[ym]||{p:0,s:0,sellable:0,nonSellable:0};var inv=mm.sellable+mm.nonSellable;
     return '<div class="ccard" onclick="mPsiModel(\''+m.id+'\')">'
@@ -1283,15 +1284,27 @@ function vPsi(){
         +'<div><div class="muted" style="font-size:9.5px">'+jt('불량','NG')+'</div><b style="font-size:13px;color:'+(mm.nonSellable?'var(--warn)':'var(--muted)')+'">'+mm.nonSellable.toLocaleString()+'</b></div></div>'
       +'<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:9px">'+_psiSpark(m,ym)+_psiActual(m)+'</div></div>';
   }).join(''):'<div class="card"><div class="empty">'+jt('해당 분류 없음','None')+'</div></div>';
-  return head('📊 '+jt('PSI 현황','PSI Status'), jt('모델별 월간 구매(P)·판매(S)·재고 현황 · 카드 클릭 → 월별 수정','Monthly P/S/inventory by model · click a card to edit'),
-    '<select class="sel" onchange="fPsiYm=this.value;render()">'+allYm.map(function(k){return '<option '+(ym===k?'selected':'')+'>'+k+'</option>';}).join('')+'</select>')
-    +'<div class="grid actkpi" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">'
-    +'<div class="statcard"><div class="sv">'+totSellable.toLocaleString()+'</div><div class="sl">'+ym+' '+jt('총 판매가능 재고','Total sellable stock')+'</div></div>'
+  var listRows=L.length?L.map(function(m){
+    var mm=m.months[ym]||{p:0,s:0,sellable:0,nonSellable:0};var inv=mm.sellable+mm.nonSellable;
+    return '<tr onclick="mPsiModel(\''+m.id+'\')"><td class="l"><b style="color:var(--ink)">'+esc(m.model)+'</b></td>'
+      +'<td class="l"><span class="chip '+(m.kind==='device'?'c-blue':'c-amber')+'" style="font-size:10px">'+(m.kind==='device'?jt('기기','Device'):jt('소모품','Consumable'))+'</span></td>'
+      +'<td style="color:var(--ok)">+'+mm.p.toLocaleString()+'</td>'
+      +'<td style="color:var(--brand)">'+mm.s.toLocaleString()+'</td>'
+      +'<td><b>'+inv.toLocaleString()+'</b></td>'
+      +'<td style="color:'+(mm.nonSellable?'var(--warn)':'var(--muted)')+'">'+mm.nonSellable.toLocaleString()+'</td>'
+      +'<td class="l muted" style="font-size:11px">'+(m.link?esc(m.link):'-')+'</td></tr>';
+  }).join(''):'<tr><td colspan="7" class="empty">'+jt('해당 분류 없음','None')+'</td></tr>';
+  var listHtml='<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">'+jt('모델','Model')+'</th><th class="l">'+jt('종류','Kind')+'</th><th>P</th><th>S</th><th>'+jt('재고','Inv')+'</th><th>'+jt('불량','NG')+'</th><th class="l">'+jt('연동','Linked')+'</th></tr></thead><tbody>'+listRows+'</tbody></table></div>';
+  return head('📊 '+jt('PSI 현황','PSI Status'), jt('모델별 월간 구매(P)·판매(S)·재고 현황 · 카드/행 클릭 → 월별 수정','Monthly P/S/inventory by model · click a card or row to edit'),
+    viewSeg+'<select class="sel" onchange="fPsiYm=this.value;render()">'+allYm.map(function(k){return '<option '+(ym===k?'selected':'')+'>'+k+'</option>';}).join('')+'</select>')
+    +'<div class="grid actkpi" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px">'
+    +'<div class="statcard"><div class="sv">'+totSellDevice.toLocaleString()+'</div><div class="sl">'+ym+' '+jt('기기 판매가능 재고','Device sellable stock')+'</div></div>'
+    +'<div class="statcard"><div class="sv">'+totSellConsumable.toLocaleString()+'</div><div class="sl">'+ym+' '+jt('소모품 판매가능 재고','Consumable sellable stock')+'</div></div>'
     +'<div class="statcard"><div class="sv" style="color:var(--ok)">+'+totP.toLocaleString()+'</div><div class="sl">'+jt('당월 입고(P)','Purchases (P)')+'</div></div>'
     +'<div class="statcard"><div class="sv" style="color:var(--brand)">'+totS.toLocaleString()+'</div><div class="sl">'+jt('당월 판매(S)','Sales (S)')+'</div></div>'
     +'<div class="statcard"><div class="sv">'+avgCov.toFixed(1)+'</div><div class="sl">'+jt('평균 재고소진 개월','Avg. months of cover')+'</div></div></div>'
     +'<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'+pills+'</div>'
-    +'<div class="cgrid">'+cards+'</div></div>';
+    +(fPsiView==='list'?listHtml:'<div class="cgrid">'+cards+'</div>')+'</div>';
 }
 function mPsiModel(id){
   var m=(D.psi||[]).find(function(x){return x.id===id;});if(!m)return;
