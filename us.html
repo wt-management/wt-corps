@@ -1249,7 +1249,7 @@ async function seedPsiFromExcel(){
   D.psi=PSI_SEED.map(function(m){
     var months={};
     for(var i=0;i<12;i++){var k=yr+'-'+String(i+1).padStart(2,'0');months[k]={p:m.p[i]||0,s:m.s[i]||0,sellable:m.sellable[i]||0,nonSellable:m.nonSellable[i]||0};}
-    return {id:uid(),model:m.model,kind:m.kind,link:'',months:months};
+    return {id:uid(),model:m.model,kind:m.kind,link:'',remark:'',months:months};
   });
   await saveAll(jt('PSI 데이터 불러옴','PSI data imported'));
 }
@@ -1292,9 +1292,10 @@ function vPsi(){
       +'<td style="color:var(--brand)">'+mm.s.toLocaleString()+'</td>'
       +'<td><b>'+inv.toLocaleString()+'</b></td>'
       +'<td style="color:'+(mm.nonSellable?'var(--warn)':'var(--muted)')+'">'+mm.nonSellable.toLocaleString()+'</td>'
-      +'<td class="l muted" style="font-size:11px">'+(m.link?esc(m.link):'-')+'</td></tr>';
-  }).join(''):'<tr><td colspan="7" class="empty">'+jt('해당 분류 없음','None')+'</td></tr>';
-  var listHtml='<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">'+jt('모델','Model')+'</th><th class="l">'+jt('종류','Kind')+'</th><th>P</th><th>S</th><th>'+jt('재고','Inv')+'</th><th>'+jt('불량','NG')+'</th><th class="l">'+jt('연동','Linked')+'</th></tr></thead><tbody>'+listRows+'</tbody></table></div>';
+      +'<td class="l muted" style="font-size:11px">'+(m.link?esc(m.link):'-')+'</td>'
+      +'<td class="l muted" style="font-size:11px;white-space:normal">'+(m.remark?trUser(m.remark):'-')+'</td></tr>';
+  }).join(''):'<tr><td colspan="8" class="empty">'+jt('해당 분류 없음','None')+'</td></tr>';
+  var listHtml='<div class="card" style="padding:0;overflow:auto"><table style="table-layout:fixed"><colgroup><col style="width:140px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:130px"><col></colgroup><thead><tr><th class="l">'+jt('모델','Model')+'</th><th class="l">'+jt('종류','Kind')+'</th><th>P</th><th>S</th><th>'+jt('재고','Inv')+'</th><th>'+jt('불량','NG')+'</th><th class="l">'+jt('연동','Linked')+'</th><th class="l">'+jt('비고','Remark')+'</th></tr></thead><tbody>'+listRows+'</tbody></table></div>';
   return head('📊 '+jt('PSI 현황','PSI Status'), jt('모델별 월간 구매(P)·판매(S)·재고 현황 · 카드/행 클릭 → 월별 수정','Monthly P/S/inventory by model · click a card or row to edit'),
     viewSeg+'<select class="sel" onchange="fPsiYm=this.value;render()">'+allYm.map(function(k){return '<option '+(ym===k?'selected':'')+'>'+k+'</option>';}).join('')+'</select>')
     +'<div class="grid actkpi" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px">'
@@ -1322,11 +1323,13 @@ function mPsiModel(id){
   }).join('');
   openM((m.kind==='device'?jt('기기 PSI 수정 · ','Edit Device PSI · '):jt('소모품 PSI 수정 · ','Edit Consumable PSI · '))+esc(m.model),
     '<div class="fld"><label>'+jt('연동 품목/장비 (선택 사항)','Linked item/equipment (optional)')+'</label>'+linkSel+'</div>'
+    +'<div class="fld"><label>'+jt('비고','Remark')+'</label><textarea id="psi-remark" rows="2" style="min-height:44px;resize:vertical">'+esc(m.remark||'')+'</textarea></div>'
     +'<div style="overflow:auto;max-height:340px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th class="l">'+jt('월','Month')+'</th><th>P</th><th>S</th><th>Sellable</th><th>Non-Sellable</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
     async()=>{
       var link=document.getElementById('psi-link').value;
+      var remark=document.getElementById('psi-remark').value.trim();
       var months={};keys.forEach(function(k){months[k]={p:Number(document.getElementById('psi-p-'+k).value)||0,s:Number(document.getElementById('psi-s-'+k).value)||0,sellable:Number(document.getElementById('psi-sl-'+k).value)||0,nonSellable:Number(document.getElementById('psi-ns-'+k).value)||0};});
-      var i=(D.psi||[]).findIndex(function(x){return x.id===id;});if(i>=0){D.psi[i].link=link;D.psi[i].months=months;}
+      var i=(D.psi||[]).findIndex(function(x){return x.id===id;});if(i>=0){D.psi[i].link=link;D.psi[i].remark=remark;D.psi[i].months=months;}
       return await saveAll(jt('PSI 저장됨','PSI saved'));
     },
     async()=>{D.psi=(D.psi||[]).filter(function(x){return x.id!==id;});await saveAll(jt('삭제됨','Deleted'));}
