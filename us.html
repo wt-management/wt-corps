@@ -1931,14 +1931,14 @@ async function seedSample(save){
     {id:cid(),date:dt(-25),client:C2,product:'Cartridge',qty:100,amt:A2,status:'수주',eta:dt(-4),memo:'납기 확인 필요'},
   ];
   D.items=[
-    {id:cid(),name:'Oligio X 본체',qty0:6,unit:'대',safety:3,loc:'창고 A-1'},
+    {id:cid(),name:'Oligio X',qty0:6,unit:'대',safety:3,loc:'창고 A-1'},
     {id:cid(),name:'Oligio Tip [F-4.0]',qty0:420,unit:'개',safety:200,loc:'창고 B-2'},
-    {id:cid(),name:'Lavieen 본체',qty0:2,unit:'대',safety:2,loc:'창고 A-2'},
+    {id:cid(),name:'Lavieen',qty0:2,unit:'대',safety:2,loc:'창고 A-2'},
     {id:cid(),name:'Cartridge',qty0:80,unit:'개',safety:150,loc:'창고 B-1'},
   ];
   D.moves=[
-    {id:cid(),date:dt(-5),type:'입고',item:'Oligio X 본체',qty:3,ref:'선적 SH-2607'},
-    {id:cid(),date:dt(-4),type:'출고',item:'Oligio X 본체',qty:2,ref:C1},
+    {id:cid(),date:dt(-5),type:'입고',item:'Oligio X',qty:3,ref:'선적 SH-2607'},
+    {id:cid(),date:dt(-4),type:'출고',item:'Oligio X',qty:2,ref:C1},
     {id:cid(),date:dt(-12),type:'출고',item:'Oligio Tip [F-4.0]',qty:200,ref:C2},
     {id:cid(),date:dt(-16),type:'입고',item:'Cartridge',qty:50,ref:'선적 SH-2606'},
   ];
@@ -1980,7 +1980,7 @@ async function seedSample(save){
   CADDR['Miami Aesthetic Center']=['1691 Michigan Ave, Miami Beach, FL 33139',25.7907,-80.1300];
   D.clients.forEach(c=>{const a=CADDR[c.name];if(a){c.address=a[0];c.lat=a[1];c.lng=a[2];}});
   // 장비(시리얼 단위) — 선적/구매와 유기적 연결
-  const OX='Oligio X 본체',LV='Lavieen 본체';
+  const OX='Oligio X',LV='Lavieen';
   const ev=(d,t,x)=>({date:d,type:t,detail:x||''});
   D.equipment=[
     {id:cid(),serial:'WT-OX-25001',item:OX,status:'재고',client:'',inDate:dt(-40),shipRef:'SH-2607',outDate:'',outRef:'',note:'',events:[ev(dt(-40),'입고','선적 SH-2607')]},
