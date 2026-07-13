@@ -1296,13 +1296,13 @@ function vPsi(){
   var totSellDevice=0,totSellConsumable=0,totP=0,totS=0,covs=[];
   D.psi.forEach(function(m){var mm=m.months[ym]||{p:0,s:0,sellable:0,nonSellable:0};if(m.kind==='device')totSellDevice+=mm.sellable;else totSellConsumable+=mm.sellable;totP+=mm.p;totS+=mm.s;var avg=_psiAvgS(m,ym);if(avg>0)covs.push(mm.sellable/avg);});
   var avgCov=covs.length?(covs.reduce(function(a,b){return a+b;},0)/covs.length):0;
-  var pills=['','device','consumable'].map(function(k){var lbl=k===''?jt('전체','All'):k==='device'?jt('기기','Device'):jt('소모품','Consumable');var on=fPsiKind===k;return '<button onclick="fPsiKind=\''+k+'\';render()" style="padding:5px 12px;border-radius:999px;border:1px solid '+(on?'var(--brand)':'var(--line)')+';background:'+(on?'var(--brand)':'#fff')+';color:'+(on?'#fff':'var(--body)')+';font-size:12px;font-weight:'+(on?'700':'500')+';cursor:pointer">'+lbl+'</button>';}).join('');
+  var pills=['','device','consumable'].map(function(k){var lbl=k===''?jt('전체','All'):k==='device'?jt('장비','Device'):jt('소모품','Consumable');var on=fPsiKind===k;return '<button onclick="fPsiKind=\''+k+'\';render()" style="padding:5px 12px;border-radius:999px;border:1px solid '+(on?'var(--brand)':'var(--line)')+';background:'+(on?'var(--brand)':'#fff')+';color:'+(on?'#fff':'var(--body)')+';font-size:12px;font-weight:'+(on?'700':'500')+';cursor:pointer">'+lbl+'</button>';}).join('');
   var viewSeg='<div class="seg">'+[['card',jt('카드형','Cards')],['list',jt('리스트형','List')]].map(function(x){return '<button class="'+(fPsiView===x[0]?'on':'')+'" onclick="fPsiView=\''+x[0]+'\';render()">'+x[1]+'</button>';}).join('')+'</div>';
   var cards=L.length?L.map(function(m){
     var mm=m.months[ym]||{p:0,s:0,sellable:0,nonSellable:0};var inv=mm.sellable+mm.nonSellable;
     return '<div class="ccard" onclick="mPsiModel(\''+m.id+'\')">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px"><div style="font-weight:700;color:var(--ink);font-size:13.5px">'+esc(m.model)+'</div>'
-      +'<span class="chip '+(m.kind==='device'?'c-blue':'c-amber')+'" style="font-size:10px;flex-shrink:0">'+(m.kind==='device'?jt('기기','Device'):jt('소모품','Consumable'))+'</span></div>'
+      +'<span class="chip '+(m.kind==='device'?'c-blue':'c-amber')+'" style="font-size:10px;flex-shrink:0">'+(m.kind==='device'?jt('장비','Device'):jt('소모품','Consumable'))+'</span></div>'
       +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;text-align:center">'
         +'<div><div class="muted" style="font-size:9.5px">P</div><b style="font-size:13px;color:var(--ok)">+'+mm.p.toLocaleString()+'</b></div>'
         +'<div><div class="muted" style="font-size:9.5px">S</div><b style="font-size:13px;color:var(--brand)">'+mm.s.toLocaleString()+'</b></div>'
@@ -1313,7 +1313,7 @@ function vPsi(){
   var listRows=L.length?L.map(function(m){
     var mm=m.months[ym]||{p:0,s:0,sellable:0,nonSellable:0};var inv=mm.sellable+mm.nonSellable;
     return '<tr onclick="mPsiModel(\''+m.id+'\')"><td class="l"><b style="color:var(--ink)">'+esc(m.model)+'</b></td>'
-      +'<td class="l"><span class="chip '+(m.kind==='device'?'c-blue':'c-amber')+'" style="font-size:10px">'+(m.kind==='device'?jt('기기','Device'):jt('소모품','Consumable'))+'</span></td>'
+      +'<td class="l"><span class="chip '+(m.kind==='device'?'c-blue':'c-amber')+'" style="font-size:10px">'+(m.kind==='device'?jt('장비','Device'):jt('소모품','Consumable'))+'</span></td>'
       +'<td style="color:var(--ok)">+'+mm.p.toLocaleString()+'</td>'
       +'<td style="color:var(--brand)">'+mm.s.toLocaleString()+'</td>'
       +'<td><b>'+inv.toLocaleString()+'</b></td>'
@@ -1325,7 +1325,7 @@ function vPsi(){
   return head('📊 '+jt('PSI 현황','PSI Status'), jt('모델별 월간 구매(P)·판매(S)·재고 현황 · 카드/행 클릭 → 월별 수정','Monthly P/S/inventory by model · click a card or row to edit'),
     viewSeg+'<select class="sel" onchange="fPsiYm=this.value;render()">'+allYm.map(function(k){return '<option '+(ym===k?'selected':'')+'>'+k+'</option>';}).join('')+'</select>')
     +'<div class="grid actkpi" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px">'
-    +'<div class="statcard"><div class="sv">'+totSellDevice.toLocaleString()+'</div><div class="sl">'+ym+' '+jt('기기 판매가능 재고','Device sellable stock')+'</div></div>'
+    +'<div class="statcard"><div class="sv">'+totSellDevice.toLocaleString()+'</div><div class="sl">'+ym+' '+jt('장비 판매가능 재고','Device sellable stock')+'</div></div>'
     +'<div class="statcard"><div class="sv">'+totSellConsumable.toLocaleString()+'</div><div class="sl">'+ym+' '+jt('소모품 판매가능 재고','Consumable sellable stock')+'</div></div>'
     +'<div class="statcard"><div class="sv" style="color:var(--ok)">+'+totP.toLocaleString()+'</div><div class="sl">'+jt('당월 입고(P)','Purchases (P)')+'</div></div>'
     +'<div class="statcard"><div class="sv" style="color:var(--brand)">'+totS.toLocaleString()+'</div><div class="sl">'+jt('당월 판매(S)','Sales (S)')+'</div></div>'
@@ -1352,7 +1352,7 @@ function mPsiModel(id){
       +'<td><input type="number" id="psi-sl-'+k+'" value="'+(v.sellable||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td>'
       +'<td><input type="number" id="psi-ns-'+k+'" value="'+(v.nonSellable||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td></tr>';
   }).join('');
-  openM((m.kind==='device'?jt('기기 PSI 수정 · ','Edit Device PSI · '):jt('소모품 PSI 수정 · ','Edit Consumable PSI · '))+esc(m.model),
+  openM((m.kind==='device'?jt('장비 PSI 수정 · ','Edit Device PSI · '):jt('소모품 PSI 수정 · ','Edit Consumable PSI · '))+esc(m.model),
     '<div class="fld"><label>'+jt('연동 품목/장비 (선택 사항)','Linked item/equipment (optional)')+'</label>'+linkSel+'</div>'
     +'<div class="fld"><label>'+jt('비고','Remark')+'</label><textarea id="psi-remark" rows="2" style="min-height:44px;resize:vertical">'+esc(m.remark||'')+'</textarea></div>'
     +'<div style="overflow:auto;max-height:340px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th class="l">'+jt('월','Month')+'</th><th>P</th><th>S</th><th>Sellable</th><th>Non-Sellable</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
