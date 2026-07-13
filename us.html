@@ -420,11 +420,13 @@ function setLang(l){L=l;localStorage.setItem('us_lang',l);render();}
 function toast(m){if(L==='en'){if(EN[m]!=null)m=EN[m];else{for(const k of EN_KEYS){if(m.indexOf(k)>=0)m=m.split(k).join(EN[k]);}}}const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
 function esc(s){return(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 // ── 사용자 입력 자동 번역 (영↔한, MyMemory) ──
+const NO_TRANSLATE=['Lavieen']; // 브랜드명 등 번역하지 않고 항상 원문 그대로 표기
 var _trCache={};try{_trCache=JSON.parse(localStorage.getItem('us_trcache')||'{}');}catch(e){}
 function _trSave(){try{localStorage.setItem('us_trcache',JSON.stringify(_trCache));}catch(e){}}
 function trUser(t){
   t=(t==null?'':String(t));
   if(!t.trim())return esc(t);
+  if(NO_TRANSLATE.indexOf(t.trim())>=0)return esc(t);
   var need = (typeof L!=='undefined'&&L==='ko') ? (/[A-Za-z]/.test(t)&&!/[\uac00-\ud7a3]/.test(t)) : (typeof L!=='undefined'&&L==='en' ? /[\uac00-\ud7a3]/.test(t) : false);
   if(!need)return esc(t);
   var key=L+'|'+t;
