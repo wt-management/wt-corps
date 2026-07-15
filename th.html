@@ -185,15 +185,15 @@ const uid=()=>crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.random(
 async function boot(){const{data}=await _sb.auth.getSession();
   if(data&&data.session)await enter(data.session.user);
   else if(location.hostname==='localhost'||location.hostname==='127.0.0.1'){LOCAL=true;ME='dev@local';D=blank();seedSample(false);ready();}
-  else location.href=CENTRAL;}
+  else location.replace(CENTRAL);}
 async function enter(user){ME=user.email||'';
   document.getElementById('uem').textContent=ME;document.getElementById('unm').textContent=ME.split('@')[0]||'사용자';document.getElementById('uav').textContent=(ME[0]||'P').toUpperCase();
   // 접근 게이트: 태국법인(th) 권한자 · 전체관리자(admin) · 소유자(master)만
   if(ME!=='pmw0406@gmail.com'){
     try{const{data:p}=await _sb.from('crm_profiles').select('role,access').eq('id',user.id).maybeSingle();
       const ok=p&&(p.role==='admin'||(p.access||'').split(',').map(function(s){return s.trim();}).indexOf('th')>=0);
-      if(!ok){location.href=CENTRAL;return;}
-    }catch(e){location.href=CENTRAL;return;}
+      if(!ok){location.replace(CENTRAL);return;}
+    }catch(e){location.replace(CENTRAL);return;}
   }
   const{data}=await _sb.from('cons_cache').select('data').eq('key',KEY).maybeSingle();
   D=Object.assign(blank(),(data&&data.data)||{});
@@ -203,7 +203,18 @@ function migrate(){ // v1 → v2: sales에 collections 없으면 빈배열, targ
   if(!D.targets)D.targets={};
   if(!D.accounts||!D.accounts.length)D.accounts=[{name:'주거래계좌',opening:0}];
 }
-function ready(){document.getElementById('boot-ov').style.display='none';document.getElementById('app').style.display='block';render();if(!LOCAL)_wtRenderSwitcher();}
+function ready(){document.getElementById('boot-ov').style.display='none';document.getElementById('app').style.display='block';
+  // 초기 뷰: 유효 딥링크 해시 > (reload|back_forward)+세션저장 뷰 > 기본 dash
+  let v0='dash';
+  const h=(location.hash||'').replace(/^#/,'');
+  if(VIEW_KEYS.indexOf(h)>=0)v0=h;
+  else{
+    let nt='';try{const en=performance.getEntriesByType('navigation');nt=(en&&en[0]&&en[0].type)||'';}catch(e){}
+    if(nt==='reload'||nt==='back_forward'){try{const sv=sessionStorage.getItem(PGKEY);if(sv&&VIEW_KEYS.indexOf(sv)>=0)v0=sv;}catch(e){}}
+  }
+  setView(v0,false);
+  try{history.replaceState({p:v0},'','#'+v0);}catch(e){}
+  if(!LOCAL)_wtRenderSwitcher();}
 
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
 var _WT_MASTER='pmw0406@gmail.com';
@@ -253,7 +264,7 @@ async function saveAll(msg){
   const{error}=await _sb.from('cons_cache').upsert({key:KEY,data:D});
   if(error){toast('저장 실패: '+error.message);return false;}
   render();toast(msg||'저장됨');return true;}
-async function doLogout(){await _sb.auth.signOut();Object.keys(localStorage).filter(k=>k.startsWith('sb-')).forEach(k=>localStorage.removeItem(k));location.href=CENTRAL;}
+async function doLogout(){await _sb.auth.signOut();Object.keys(localStorage).filter(k=>k.startsWith('sb-')).forEach(k=>localStorage.removeItem(k));try{sessionStorage.removeItem('wt_corp_th_view');}catch(e){}location.href=CENTRAL;}
 /* ── 자동 로그아웃: 30분 무동작 시 (마스터 제외) ── */
 (function(){var IDLE_MS=30*60*1000,_it;
   function _logout(){if(typeof doLogout==='function'){doLogout();return;}try{_sb.auth.signOut().then(function(){location.href=CENTRAL;});}catch(e){location.href=CENTRAL;}}
@@ -295,10 +306,32 @@ function fundsBalAcc(name){const acc=(D.accounts||[]).find(a=>a.name===name);let
 function fundsBal(){return (D.accounts||[]).reduce((a,x)=>a+fundsBalAcc(x.name),0);}
 function itemQty(name){const it=(D.items||[]).find(i=>i.name===name);let q=it?(+it.qty0||0):0;(D.moves||[]).forEach(m=>{if(m.item===name)q+=(m.type==='입고'?1:-1)*(+m.qty||0);});q+=(D.equipment||[]).filter(e=>e.item===name).length;return q;}
 
-// ── 라우팅 ──
-function setView(v){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);}
+// ── 라우팅 (WT_NAV: 해시 딥링크 + 새로고침/뒤로가기 복원) ──
+const VIEW_KEYS=['dash','sales','ar','orders','clients','inv','asset','funds','exp'];
+const PGKEY='wt_corp_th_view';
+// SSO 토큰 해시(#at=..&rt=..) — 이 사이트는 토큰을 파싱하지 않으므로 부팅 즉시 제거(유효 딥링크 해시는 보존)
+(function(){const h=(location.hash||'').replace(/^#/,'');if(h&&VIEW_KEYS.indexOf(h)<0){try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}})();
+function setView(v,push){if(VIEW_KEYS.indexOf(v)<0)v='dash';curView=v;
+  try{sessionStorage.setItem(PGKEY,v);}catch(e){}
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);
+  if(push!==false&&!(history.state&&history.state.p===v)){try{history.pushState({p:v},'','#'+v);}catch(e){}}}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>setView(a.dataset.v)));
-function render(){const f={dash:vDash,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,asset:vAsset,funds:vFunds,exp:vExp}[curView];document.getElementById('view').innerHTML=f();}
+window.addEventListener('popstate',function(e){
+  // 오버레이(모달/드로어) 열림 → 닫기만 하고 소모된 엔트리 복구 (모바일 뒤로가기=닫기)
+  const mbg=document.getElementById('mbg'),dw=document.getElementById('dw');
+  const mOpen=mbg&&mbg.style.display==='flex',dOpen=dw&&dw.classList.contains('open');
+  if(mOpen||dOpen){
+    if(mOpen)closeM();
+    if(dOpen)closeDw();
+    try{history.pushState({p:curView},'','#'+curView);}catch(x){}
+    return;
+  }
+  if(e.state&&e.state.p&&VIEW_KEYS.indexOf(e.state.p)>=0)setView(e.state.p,false);
+  // state 없음 → 아무것도 하지 않음 (pushState로 되밀지 않음)
+});
+// bfcache: 로그아웃/만료 후 뒤로가기로 이전 화면 노출 차단
+window.addEventListener('pageshow',function(e){if(e.persisted&&!LOCAL){_sb.auth.getSession().then(function(r){if(!(r&&r.data&&r.data.session))location.reload();});}});
+function render(){if(!D)return;const f={dash:vDash,sales:vSales,ar:vAR,orders:vOrders,clients:vClients,inv:vInv,asset:vAsset,funds:vFunds,exp:vExp}[curView];if(!f)return;document.getElementById('view').innerHTML=f();}
 function head(t,d,acts){return `<div class="topbar"><div><h2>${t}</h2><div class="desc">${d}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${acts||''}</div></div><div class="wrap">`;}
 function isEmpty(){return !(D.sales||[]).length&&!(D.orders||[]).length&&!(D.funds||[]).length&&!(D.items||[]).length;}
 

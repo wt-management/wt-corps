@@ -292,16 +292,19 @@ const blank=()=>({v:3,rate:1350,targets:{},accounts:[{name:'주거래계좌',ope
 const uid=()=>crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.random().toString(16).slice(2);
 
 // ── 부트 ──
-async function boot(){const{data}=await _sb.auth.getSession();
+async function boot(){
+  // SSO 토큰 해시(#at=..&rt=..) 잔류 제거 — 이 사이트는 토큰을 파싱하지 않으므로 즉시 strip (유효 딥링크 해시는 보존)
+  if(/^#at=/.test(location.hash||'')){try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}
+  const{data}=await _sb.auth.getSession();
   if(data&&data.session)await enter(data.session.user);
   else if(location.hostname==='localhost'||location.hostname==='127.0.0.1'){LOCAL=true;ME='dev@local';_canPerf=true;_canHQ=true;D=blank();seedSample(false);ready();}
-  else location.href=CENTRAL;}
+  else location.replace(CENTRAL);}
 async function enter(user){ME=user.email||'';
   document.getElementById('uem').textContent=ME;document.getElementById('unm').textContent=ME.split('@')[0]||'사용자';document.getElementById('uav').textContent=(ME[0]||'P').toUpperCase();
   await loadPerm(user.id);
   // 접근 게이트: 미국법인(us) 권한자 · 전체관리자(admin) · 소유자(master)만
   if(!(ME==='pmw0406@gmail.com' || _role==='admin' || (_access||'').split(',').map(function(s){return s.trim();}).indexOf('us')>=0)){
-    location.href=CENTRAL; return;
+    location.replace(CENTRAL); return;
   }
   const{data}=await _sb.from('cons_cache').select('data').eq('key',KEY).maybeSingle();
   D=Object.assign(blank(),(data&&data.data)||{});
@@ -312,13 +315,23 @@ function migrate(){ // v1 → v2: sales에 collections 없으면 빈배열, targ
   if(!D.accounts||!D.accounts.length)D.accounts=[{name:'주거래계좌',opening:0}];
   if(!D.clients)D.clients=[];if(!D.deals)D.deals=[];if(!D.acts)D.acts=[];if(!D.tasks)D.tasks=[];if(!D.snapshots)D.snapshots=[];if(!D.shipments)D.shipments=[];if(!D.equipment)D.equipment=[];
 }
-function ready(){document.getElementById('boot-ov').style.display='none';document.getElementById('app').style.display='block';applyPerm();var iv=(location.hash||'').replace('#','');if(iv==='perf'&&!_canPerf)iv='dash';if(iv==='hq'&&!_canHQ)iv='dash';if(VIEWS_KEYS.indexOf(iv)>=0){curView=iv;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===iv));}render();try{_wtRenderSwitcher();}catch(e){}}
+function ready(){document.getElementById('boot-ov').style.display='none';document.getElementById('app').style.display='block';applyPerm();
+  // 초기 뷰 결정: (a)유효 딥링크 해시 > (b)reload/back_forward 시 sessionStorage 복원 > (c)기본 dash
+  var ok=function(v){return VIEWS_KEYS.indexOf(v)>=0&&!(v==='perf'&&!_canPerf)&&!(v==='hq'&&!_canHQ);};
+  var iv=(location.hash||'').replace('#','');
+  if(ok(iv)){curView=iv;}
+  else{var nt='navigate';try{var ne=performance.getEntriesByType('navigation')[0];if(ne&&ne.type)nt=ne.type;}catch(e){}
+    if(nt==='reload'||nt==='back_forward'){var sv=null;try{sv=sessionStorage.getItem('us_view');}catch(e){}if(sv&&ok(sv))curView=sv;}}
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===curView));
+  try{sessionStorage.setItem('us_view',curView);}catch(e){}
+  try{history.replaceState({v:curView},'','#'+curView);}catch(e){}  // seed: 여분 엔트리 없이 현재 엔트리에 state 심기
+  render();try{_wtRenderSwitcher();}catch(e){}}
 async function saveAll(msg){
   if(LOCAL){render();toast(msg||'저장됨 (로컬 테스트)');return true;}
   const{error}=await _sb.from('cons_cache').upsert({key:KEY,data:D});
   if(error){toast('저장 실패: '+error.message);return false;}
   render();toast(msg||'저장됨');return true;}
-async function doLogout(){await _sb.auth.signOut();Object.keys(localStorage).filter(k=>k.startsWith('sb-')).forEach(k=>localStorage.removeItem(k));location.href=CENTRAL;}
+async function doLogout(){await _sb.auth.signOut();try{sessionStorage.removeItem('us_view');}catch(e){}Object.keys(localStorage).filter(k=>k.startsWith('sb-')).forEach(k=>localStorage.removeItem(k));location.href=CENTRAL;}
 /* ── 자동 로그아웃: 30분 무동작 시 (마스터 제외) ── */
 (function(){var IDLE_MS=30*60*1000,_it;
   function _logout(){if(typeof doLogout==='function'){doLogout();return;}try{_sb.auth.signOut().then(function(){location.href=CENTRAL;});}catch(e){location.href=CENTRAL;}}
@@ -521,8 +534,20 @@ function itemQty(name){const it=(D.items||[]).find(i=>i.name===name);let q=it?(+
 
 // ── 라우팅 ──
 const VIEWS_KEYS=['dash','report','perf','sched','pipe','accounts','acts','sales','ar','orders','clients','psi','inv','asset','funds','hq'];
-function setView(v,noPush){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);if(!noPush){try{history.pushState({v:v},'','#'+v);}catch(e){}}}
-window.addEventListener('popstate',function(){var v=(location.hash||'').replace('#','');setView(VIEWS_KEYS.indexOf(v)>=0?v:'dash',true);});
+function setView(v,noPush){curView=v;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));render();window.scrollTo(0,0);try{sessionStorage.setItem('us_view',v);}catch(e){}if(!noPush&&!(history.state&&history.state.v===v)){try{history.pushState({v:v},'','#'+v);}catch(e){}}}
+window.addEventListener('popstate',function(e){
+  // 오버레이(모달/드로어/모바일사이드바) 열려 있으면 닫기만 하고 소모된 엔트리 복구
+  var mOpen=document.getElementById('mbg').style.display==='flex';
+  var dOpen=document.getElementById('dw').classList.contains('open');
+  var sOpen=document.getElementById('sidebar').classList.contains('open');
+  if(mOpen||dOpen||sOpen){if(mOpen)closeM();if(dOpen)closeDw();if(sOpen)closeSidebar();try{history.pushState({v:curView},'','#'+curView);}catch(e2){}return;}
+  var v=(e.state&&e.state.v)||((location.hash||'').replace('#',''));
+  if(v==='perf'&&!_canPerf)v='dash';if(v==='hq'&&!_canHQ)v='dash';
+  if(VIEWS_KEYS.indexOf(v)>=0)setView(v,true);
+  // state·해시 모두 무효면 아무것도 하지 않음 (pushState로 되밀지 않음)
+});
+// bfcache 복원 시 세션 확인 — 로그아웃/만료 후 뒤로가기로 이전 계정 화면 노출 차단
+window.addEventListener('pageshow',function(e){ if(e.persisted){ _sb.auth.getSession().then(function(r){ if(!(r&&r.data&&r.data.session)) location.reload(); }); } });
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('mob-ov').classList.toggle('show');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('mob-ov').classList.remove('show');}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>{setView(a.dataset.v);closeSidebar();}));
