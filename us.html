@@ -1423,7 +1423,7 @@ function mPsiModel(id){
   openM((m.kind==='device'?jt('장비 PSI 수정 · ','Edit Device PSI · '):jt('소모품 PSI 수정 · ','Edit Consumable PSI · '))+esc(m.model),
     '<div class="fld"><label>'+jt('연동 품목/장비 (선택 사항)','Linked item/equipment (optional)')+'</label>'+linkSel+'</div>'
     +'<div class="fld"><label>'+jt('비고','Remark')+'</label><textarea id="psi-remark" rows="2" style="min-height:44px;resize:vertical">'+esc(m.remark||'')+'</textarea></div>'
-    +'<div style="overflow:auto;max-height:340px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th class="l">'+jt('월','Month')+'</th><th>P</th><th>S</th><th>Sellable</th><th>Non-Sellable</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
+    +'<div style="overflow:auto;max-height:340px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:center">'+jt('월','Month')+'</th><th style="text-align:center">P</th><th style="text-align:center">S</th><th style="text-align:center">Sellable</th><th style="text-align:center">Non-Sellable</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
     async()=>{
       var link=document.getElementById('psi-link').value;
       var remark=document.getElementById('psi-remark').value.trim();
