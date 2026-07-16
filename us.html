@@ -268,6 +268,8 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 const SB_URL='https://mhfacbsittfdkknwybhc.supabase.co',SB_KEY='sb_publishable_aPMOOWAlyJlMcP1ZM_gpPA_jlrcvCRd';
 const _sb=supabase.createClient(SB_URL,SB_KEY);
 const CENTRAL='https://wt-management.github.io/wontech/';
+/* 중앙 로그인으로 이동(세션 없음). ret에는 해시를 절대 포함하지 않음 — #at/rt 토큰 유출·오염 방지 */
+function _goCentralWithRet(){location.replace(CENTRAL+'#ret='+encodeURIComponent(location.origin+location.pathname+location.search));}
 const KEY='corp_us_erp', SYM='$', CUR='USD';
 const ORD_ST={'수주':'c-blue','생산중':'c-amber','선적중':'c-cyan','납품완료':'c-green','취소':'c-gray'};
 const DEAL_ST={'리드':'#94a3b8','상담중':'#2563eb','견적발송':'#d97706','협의중':'#7c3aed','계약완료':'#15803d','실패':'#cbd5e1'};
@@ -298,7 +300,7 @@ async function boot(){
   const{data}=await _sb.auth.getSession();
   if(data&&data.session)await enter(data.session.user);
   else if(location.hostname==='localhost'||location.hostname==='127.0.0.1'){LOCAL=true;ME='dev@local';_canPerf=true;_canHQ=true;D=blank();seedSample(false);ready();}
-  else location.replace(CENTRAL);}
+  else _goCentralWithRet();}  // 세션 없음 → 중앙 로그인(복귀용 ret 동봉)
 async function enter(user){ME=user.email||'';
   document.getElementById('uem').textContent=ME;document.getElementById('unm').textContent=ME.split('@')[0]||'사용자';document.getElementById('uav').textContent=(ME[0]||'P').toUpperCase();
   await loadPerm(user.id);
