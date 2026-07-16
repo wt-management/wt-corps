@@ -1415,10 +1415,10 @@ function mPsiModel(id){
   var linkSel='<select id="psi-link"><option value="">'+jt('연동 안 함','Not linked')+'</option>'+linkOpts.map(function(n){return '<option '+(m.link===n?'selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>';
   var rows=keys.map(function(k){var v=m.months[k]||{};
     return '<tr><td style="font-size:12px;font-weight:600;padding:4px 6px;white-space:nowrap">'+k+'</td>'
-      +'<td><input type="number" id="psi-p-'+k+'" value="'+(v.p||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td>'
-      +'<td><input type="number" id="psi-s-'+k+'" value="'+(v.s||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td>'
-      +'<td><input type="number" id="psi-sl-'+k+'" value="'+(v.sellable||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td>'
-      +'<td><input type="number" id="psi-ns-'+k+'" value="'+(v.nonSellable||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px"></td></tr>';
+      +'<td><input type="number" id="psi-p-'+k+'" value="'+(v.p||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px;text-align:right"></td>'
+      +'<td><input type="number" id="psi-s-'+k+'" value="'+(v.s||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px;text-align:right"></td>'
+      +'<td><input type="number" id="psi-sl-'+k+'" value="'+(v.sellable||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px;text-align:right"></td>'
+      +'<td><input type="number" id="psi-ns-'+k+'" value="'+(v.nonSellable||0)+'" style="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px;text-align:right"></td></tr>';
   }).join('');
   openM((m.kind==='device'?jt('장비 PSI 수정 · ','Edit Device PSI · '):jt('소모품 PSI 수정 · ','Edit Consumable PSI · '))+esc(m.model),
     '<div class="fld"><label>'+jt('연동 품목/장비 (선택 사항)','Linked item/equipment (optional)')+'</label>'+linkSel+'</div>'
