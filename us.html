@@ -497,13 +497,9 @@ async function applyUserTr(){
   var lp=(L==='ko')?'en|ko':'ko|en';
   for(var i=0;i<keys.length;i++){
     var srcTxt=uniq[keys[i]];
-    try{
-      var r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(srcTxt)+'&langpair='+lp);
-      var j=await r.json();
-      var tr=(j&&j.responseData&&j.responseData.translatedText)||srcTxt;
-      if(/MYMEMORY|INVALID EMAIL|QUERY LENGTH/i.test(tr))tr=srcTxt;
-      _trCache[keys[i]]=tr;
-    }catch(e){_trCache[keys[i]]=srcTxt;}
+    // 외부 번역API(mymemory) 비활성화 — 고객명·활동메모 등 업무데이터가 공용 API로 전송되어
+    // 로깅/공개되는 정보 유출 방지. 사용자 입력은 원문 그대로 표시(정적 UI 라벨 번역은 applyLang이 로컬 처리).
+    _trCache[keys[i]]=srcTxt;
   }
   _trSave();_trBusy=false;swap();
 }
