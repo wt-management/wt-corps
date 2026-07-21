@@ -1606,7 +1606,7 @@ function vActs(){
   var body=actMode==='timeline'?actTimeline(L):actMode==='calendar'?actCalendar(L):actListView(L);
   return head('📞 '+jt('활동 기록','Activities'), jt('콜·미팅·방문·AS 이력 + 후속조치','Calls, meetings, visits, service + follow-ups')+(fuAll.length?' · <span style="color:var(--bad);font-weight:600">'+jt('후속 지연 ','overdue ')+fuAll.length+'</span>':''),
     seg+filters+nav+'<button class="btn btn-primary" onclick="mAct()">+ '+jt('활동','Activity')+'</button>')
-    +`<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" class="actkpi">
+    +`<div class="grid actkpi" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
       <div class="statcard${fActQuick===''?' on':''}" style="border-top:3px solid #4f46e5" onclick="fActQuick='';render()"><div class="sv">${(D.acts||[]).length}</div><div class="sl">${jt('전체 활동','All activities')}</div></div>
       <div class="statcard${fActQuick==='month'?' on':''}" style="border-top:3px solid #2563eb" onclick="fActQuick=fActQuick==='month'?'':'month';render()"><div class="sv">${mCnt}</div><div class="sl">${jt('이번달','This month')}</div></div>
       <div class="statcard${fActQuick==='fu-week'?' on':''}" style="border-top:3px solid #16a34a" onclick="fActQuick=fActQuick==='fu-week'?'':'fu-week';render()"><div class="sv" style="color:${up.length?'#16a34a':'var(--ink)'}">${up.length}</div><div class="sl">${jt('이번주 예정 후속','Follow-ups this wk')}</div></div>
