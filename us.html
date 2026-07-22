@@ -1527,7 +1527,7 @@ function vAccounts(){
   const dealOf=n=>(D.deals||[]).filter(x=>x.client===n&&DEAL_OPEN.includes(x.stage)).length;
   const lastAct=n=>{const as=(D.acts||[]).filter(a=>a.client===n).sort((a,b)=>(b.date||'').localeCompare(a.date||''));return as[0]?as[0].date:'';};
   const rows=L.length?L.map(c=>`<tr onclick="openClient('${esc(c.name).replace(/'/g,"&#39;")}')">
-    <td class="l" style="white-space:normal"><span class="chip ${GRADE_C[c.grade]||'c-gray'}">${c.grade||'-'}</span> <b style="color:var(--ink)">${esc(c.name)}</b></td>
+    <td class="l" style="white-space:nowrap"><span class="chip ${GRADE_C[c.grade]||'c-gray'}">${c.grade||'-'}</span> <b style="color:var(--ink)">${esc(c.name)}</b></td>
     <td class="l" style="white-space:normal">${esc(c.contact)||'-'}<div class="muted" style="font-size:11px">${esc(c.phone)||''}</div></td>
     <td class="l" style="white-space:normal">${esc(c.region)||'-'}</td>
     <td class="l"><span class="chip ${c.status==='활성'?'c-green':c.status==='잠재'?'c-blue':'c-gray'}">${c.status||'활성'}</span></td>
@@ -1541,7 +1541,7 @@ function vAccounts(){
     (_dupClientGroups().length?`<button class="btn" style="color:var(--warn)" onclick="dedupClients()">🧹 중복 고객사 정리 (${_dupClientGroups().length}그룹)</button>`:'')
     +(_clientsToImport().length?`<button class="btn" style="color:var(--warn)" onclick="seedClientsFromExcel()">📥 엑셀 거래처 목록 불러오기 (${_clientsToImport().length}건)</button>`:'')
     +`<button class="btn btn-primary" onclick="mClient()">+ 고객사 등록</button>`)
-    +`<div class="card" style="padding:0;overflow:auto"><table style="width:100%;table-layout:fixed"><colgroup><col style="width:200px"><col style="width:150px"><col style="width:150px"><col style="width:70px"><col style="width:90px"><col style="width:90px"><col style="width:60px"><col style="width:90px"><col><col style="width:80px"></colgroup><thead><tr><th class="l">고객사</th><th class="l">담당자</th><th class="l">지역</th><th class="l">상태</th><th>누적 매출</th><th>미수</th><th>진행 딜</th><th class="l">최근 활동</th><th class="l">메모</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    +`<div class="card" style="padding:0;overflow:auto"><table style="width:100%;table-layout:fixed"><colgroup><col style="width:320px"><col style="width:150px"><col style="width:150px"><col style="width:70px"><col style="width:90px"><col style="width:90px"><col style="width:60px"><col style="width:90px"><col><col style="width:80px"></colgroup><thead><tr><th class="l">고객사</th><th class="l">담당자</th><th class="l">지역</th><th class="l">상태</th><th>누적 매출</th><th>미수</th><th>진행 딜</th><th class="l">최근 활동</th><th class="l">메모</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function _clientsToImport(){var have={};(D.clients||[]).forEach(function(c){have[c.name]=1;});return CLIENT_SEED_IMPORT.filter(function(c){return !have[c.name];});}
 async function saveClientMemo(id,val){
