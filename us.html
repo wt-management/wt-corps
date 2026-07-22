@@ -1538,7 +1538,8 @@ function vAccounts(){
     <td class="l" style="white-space:pre-line;padding:4px 6px;max-width:240px" onclick="event.stopPropagation()"><textarea rows="1" onchange="saveClientMemo('${c.id}',this.value)" style="width:100%;border:1px solid transparent;background:transparent;padding:4px 5px;border-radius:5px;font-size:11.5px;color:var(--body);resize:vertical;min-height:26px" onfocus="this.style.borderColor='var(--line)';this.style.background='#fff'" onblur="this.style.borderColor='transparent';this.style.background='transparent'">${esc(c.memo||'')}</textarea></td>
     <td><button class="btn btn-sm" onclick="event.stopPropagation();mAct(null,'${esc(c.name).replace(/'/g,"&#39;")}')">+ 활동</button></td></tr>`).join(''):'<tr><td colspan="10" class="empty">고객사를 등록하세요</td></tr>';
   return head('👥 고객사 관리','고객 마스터 · 등급·담당자·연락처 · 행 클릭 → 360° 상세',
-    (_clientsToImport().length?`<button class="btn" style="color:var(--warn)" onclick="seedClientsFromExcel()">📥 엑셀 거래처 목록 불러오기 (${_clientsToImport().length}건)</button>`:'')
+    (_dupClientGroups().length?`<button class="btn" style="color:var(--warn)" onclick="dedupClients()">🧹 중복 고객사 정리 (${_dupClientGroups().length}그룹)</button>`:'')
+    +(_clientsToImport().length?`<button class="btn" style="color:var(--warn)" onclick="seedClientsFromExcel()">📥 엑셀 거래처 목록 불러오기 (${_clientsToImport().length}건)</button>`:'')
     +`<button class="btn btn-primary" onclick="mClient()">+ 고객사 등록</button>`)
     +`<div class="card" style="padding:0;overflow:auto"><table style="width:100%;table-layout:fixed"><colgroup><col style="width:200px"><col style="width:150px"><col style="width:150px"><col style="width:70px"><col style="width:90px"><col style="width:90px"><col style="width:60px"><col style="width:90px"><col><col style="width:80px"></colgroup><thead><tr><th class="l">고객사</th><th class="l">담당자</th><th class="l">지역</th><th class="l">상태</th><th>누적 매출</th><th>미수</th><th>진행 딜</th><th class="l">최근 활동</th><th class="l">메모</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
@@ -1554,6 +1555,41 @@ async function seedClientsFromExcel(){
   if(!confirm('엑셀 거래처 목록에서 신규 '+toAdd.length+'건을 고객사 관리에 추가할까요? (이미 등록된 이름은 건너뜁니다)'))return;
   toAdd.forEach(function(c){D.clients.push({id:uid(),name:c.name,contact:'',phone:c.phone||'',email:'',region:c.region||'',grade:'',status:'활성',memo:c.memo||'',address:c.address||'',lat:'',lng:''});});
   await saveAll('거래처 '+toAdd.length+'건 추가됨');
+}
+function _dupClientGroups(){
+  var groups={};
+  (D.clients||[]).forEach(function(c){
+    var key=(c.name||'').trim().toLowerCase();if(!key)return;
+    (groups[key]=groups[key]||[]).push(c);
+  });
+  return Object.keys(groups).map(function(k){return groups[k];}).filter(function(g){return g.length>1;});
+}
+function _fieldScore(c){return ['contact','phone','email','region','address','grade','memo'].reduce(function(a,k){return a+(c[k]?1:0);},0);}
+async function dedupClients(){
+  var groups=_dupClientGroups();
+  if(!groups.length){toast('중복된 고객사가 없습니다');return;}
+  var totalRemoved=groups.reduce(function(a,g){return a+g.length-1;},0);
+  if(!confirm('중복 이름의 고객사 '+groups.length+'그룹(삭제될 '+totalRemoved+'건)을 하나로 합칠까요? 서로 다른 정보는 합쳐지고, 되돌릴 수 없습니다.'))return;
+  var keepIds={},dupIds={};
+  groups.forEach(function(g){
+    g.forEach(function(c){dupIds[c.id]=1;});
+    g.sort(function(a,b){return _fieldScore(b)-_fieldScore(a);});
+    var keep=g[0];
+    for(var i=1;i<g.length;i++){
+      var other=g[i];
+      if(!keep.contact&&other.contact)keep.contact=other.contact;
+      if(!keep.phone&&other.phone)keep.phone=other.phone;
+      if(!keep.email&&other.email)keep.email=other.email;
+      if(!keep.region&&other.region)keep.region=other.region;
+      if(!keep.address&&other.address)keep.address=other.address;
+      if(!keep.grade&&other.grade)keep.grade=other.grade;
+      if(!keep.lat&&other.lat){keep.lat=other.lat;keep.lng=other.lng;}
+      if(other.memo&&other.memo.trim()&&keep.memo!==other.memo){keep.memo=(keep.memo?keep.memo+'\n':'')+other.memo.trim();}
+    }
+    keepIds[keep.id]=1;
+  });
+  D.clients=(D.clients||[]).filter(function(c){return !dupIds[c.id]||keepIds[c.id];});
+  await saveAll('중복 고객사 '+totalRemoved+'건 정리됨');
 }
 let _addrTimer=null,_addrCache=[];
 function _addrSearch(q){
