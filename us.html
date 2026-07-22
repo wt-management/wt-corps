@@ -1324,13 +1324,13 @@ function csvFunds(){const rows=[['날짜','구분','계좌','항목','금액','�
 const PSI_SEED=[
   {model:'OLIGIO X TIP',kind:'consumable',p:[50,350,3040,4540,150,2160,500,300,500,500,500,500],s:[155,0,20,120,20,140,1700,2000,2500,2500,2500,2500],sellable:[30,140,2780,6620,6320,6205,8975,7275,5275,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]},
   {model:'OLIGIO TIP',kind:'consumable',p:[0,200,450,0,0,500,600,50,50,50,50,50],s:[100,30,110,40,55,215,200,180,160,160,160,160],sellable:[225,395,845,805,750,570,1365,1235,1125,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]},
-  {model:'Oligio X',kind:'device',p:[0,12,10,28,5,22,15,22,25,25,25,25],s:[2,6,6,7,3,8,7,25,33,33,33,33],sellable:[2,8,12,33,31,52,59,56,48,0,0,0],nonSellable:[9,9,9,9,13,15,16,16,16,0,0,0]},
+  {model:'Oligio X',kind:'device',p:[0,12,10,28,5,22,15,18,25,25,25,25],s:[2,6,6,7,3,8,7,13,20,33,33,33],sellable:[2,8,12,33,31,52,59,64,69,0,0,0],nonSellable:[9,9,9,9,13,15,16,16,16,0,0,0]},
   {model:'Oligio',kind:'device',p:[0,2,0,0,0,0,0,0,0,0,0,0],s:[0,1,1,0,0,0,0,0,0,0,0,0],sellable:[1,3,2,0,0,1,1,1,1,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]},
-  {model:'Majesty',kind:'device',p:[4,0,2,8,2,9,5,5,3,3,3,3],s:[0,1,1,1,3,2,3,8,9,9,9,9],sellable:[4,3,3,9,4,18,20,17,11,0,0,0],nonSellable:[0,0,1,1,4,4,4,4,4,0,0,0]},
-  {model:'PicoAlex',kind:'device',p:[1,1,2,1,0,2,1,0,0,0,0,0],s:[0,0,1,0,0,2,1,0,0,0,0,0],sellable:[1,2,3,3,3,2,2,2,2,0,0,0],nonSellable:[0,0,0,2,2,4,4,4,4,0,0,0]},
+  {model:'Majesty',kind:'device',p:[4,0,2,8,2,9,5,5,3,3,3,3],s:[0,1,1,1,3,2,3,5,9,9,9,9],sellable:[4,3,3,9,4,18,20,20,14,0,0,0],nonSellable:[0,0,1,1,4,4,4,4,4,0,0,0]},
+  {model:'PicoAlex',kind:'device',p:[1,1,2,1,0,2,1,1,0,0,0,0],s:[0,0,1,0,0,2,1,0,0,0,0,0],sellable:[1,2,3,3,3,2,2,2,3,0,0,0],nonSellable:[0,0,0,2,2,4,4,4,4,0,0,0]},
   {model:'Pico Andy',kind:'device',p:[0,0,0,0,0,0,0,0,0,0,0,0],s:[0,0,0,1,0,0,0,0,0,0,0,0],sellable:[1,1,1,0,0,0,0,0,0,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]},
-  {model:'V-Laser',kind:'device',p:[1,4,0,5,0,5,3,5,15,15,15,15],s:[0,0,1,0,0,0,6,12,15,15,15,15],sellable:[1,4,3,8,8,13,10,3,3,0,0,0],nonSellable:[0,0,1,1,1,1,1,1,1,0,0,0]},
-  {model:'Sandro Dual',kind:'device',p:[0,5,6,8,3,5,5,5,3,3,3,3],s:[0,3,2,0,1,2,2,7,12,12,12,12],sellable:[2,7,7,15,13,16,19,17,8,0,0,0],nonSellable:[0,0,1,1,1,1,1,1,1,0,0,0]},
+  {model:'V-Laser',kind:'device',p:[1,4,0,5,0,5,5,9,17,15,15,15],s:[0,0,1,0,0,0,4,8,15,15,15,15],sellable:[1,4,3,8,8,13,14,15,17,0,0,0],nonSellable:[0,0,1,1,1,1,1,1,1,0,0,0]},
+  {model:'Sandro Dual',kind:'device',p:[0,5,6,8,3,5,5,5,3,3,3,3],s:[0,3,2,0,1,2,2,5,12,12,12,12],sellable:[2,7,7,15,13,16,19,19,10,0,0,0],nonSellable:[0,0,1,1,1,1,1,1,1,0,0,0]},
   {model:'Pastelle Pro',kind:'device',p:[0,2,2,3,0,0,2,2,2,0,0,0],s:[1,2,1,0,0,1,2,2,2,0,0,0],sellable:[2,2,3,6,6,6,4,4,4,0,0,0],nonSellable:[0,0,0,0,0,0,1,1,1,0,0,0]},
   {model:'Pastelle',kind:'device',p:[0,2,0,0,0,0,0,0,0,0,0,0],s:[0,0,1,0,0,1,0,0,0,0,0,0],sellable:[0,1,1,0,1,0,0,0,0,0,0,0],nonSellable:[0,0,0,0,0,0,0,0,0,0,0,0]}
 ];
@@ -1343,6 +1343,29 @@ async function seedPsiFromExcel(){
     return {id:uid(),model:m.model,kind:m.kind,link:'',remark:'',months:months};
   });
   await saveAll(jt('PSI 데이터 불러옴','PSI data imported'));
+}
+function _psiKey(i){return curYr()+'-'+String(i+1).padStart(2,'0');}
+function _psiNeedsUpdate(){
+  if(!D.psi||!D.psi.length)return false;
+  return PSI_SEED.some(function(seed){
+    var existing=(D.psi||[]).find(function(x){return x.model===seed.model;});
+    if(!existing)return true;
+    for(var i=0;i<12;i++){
+      var k=_psiKey(i),mm=existing.months[k]||{};
+      if((mm.p||0)!==(seed.p[i]||0)||(mm.s||0)!==(seed.s[i]||0)||(mm.sellable||0)!==(seed.sellable[i]||0)||(mm.nonSellable||0)!==(seed.nonSellable[i]||0))return true;
+    }
+    return false;
+  });
+}
+async function updatePsiFromExcel(){
+  if(!confirm(jt('PSI 데이터를 최신 엑셀 값으로 갱신할까요? 모델별로 입력해둔 연동/비고는 그대로 유지되고, 월별 P/S/Sellable/Non-Sellable 숫자만 최신 값으로 바뀝니다.','Refresh PSI numbers from the latest Excel file? Linked item/remark per model are kept — only monthly P/S/Sellable/Non-Sellable values are updated.')))return;
+  PSI_SEED.forEach(function(seed){
+    var months={};for(var i=0;i<12;i++){months[_psiKey(i)]={p:seed.p[i]||0,s:seed.s[i]||0,sellable:seed.sellable[i]||0,nonSellable:seed.nonSellable[i]||0};}
+    var idx=(D.psi||[]).findIndex(function(x){return x.model===seed.model;});
+    if(idx>=0)D.psi[idx].months=months;
+    else D.psi.push({id:uid(),model:seed.model,kind:seed.kind,link:'',remark:'',months:months});
+  });
+  await saveAll(jt('PSI 데이터 갱신됨','PSI data updated'));
 }
 function _psiAvgS(m,ym){var keys=Object.keys(m.months).sort();var idx=keys.indexOf(ym);if(idx<0)return 0;var start=Math.max(0,idx-2);var slice=keys.slice(start,idx+1);var sum=slice.reduce(function(a,k){return a+(m.months[k].s||0);},0);return slice.length?sum/slice.length:0;}
 function _psiSpark(m,ym){var keys=Object.keys(m.months).sort();var idx=keys.indexOf(ym);if(idx<0)idx=keys.length-1;var start=Math.max(0,idx-5);var span=keys.slice(start,idx+1);var mx=Math.max(1,...span.map(function(k){return m.months[k].sellable||0;}));return '<div style="display:flex;gap:4px;align-items:flex-end;height:32px">'+span.map(function(k){var v=m.months[k].sellable||0;return '<div title="'+k+': '+v+'" style="width:11px;background:'+(v?'var(--brand)':'#eef1f5')+';height:'+barPct(v,mx)+'%;border-radius:2px"></div>';}).join('')+'</div>';}
@@ -1388,7 +1411,8 @@ function vPsi(){
   }).join(''):'<tr><td colspan="8" class="empty">'+jt('해당 분류 없음','None')+'</td></tr>';
   var listHtml='<div class="card" style="padding:0;overflow:auto"><table style="table-layout:fixed"><colgroup><col style="width:140px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:130px"><col></colgroup><thead><tr><th class="l">'+jt('모델','Model')+'</th><th class="l">'+jt('종류','Kind')+'</th><th>P</th><th>S</th><th>'+jt('재고','Inv')+'</th><th>'+jt('불량','NG')+'</th><th class="l">'+jt('연동','Linked')+'</th><th class="l">'+jt('비고','Remark')+'</th></tr></thead><tbody>'+listRows+'</tbody></table></div>';
   return head('📊 '+jt('PSI 현황','PSI Status'), jt('모델별 월간 구매(P)·판매(S)·재고 현황 · 카드/행 클릭 → 월별 수정','Monthly P/S/inventory by model · click a card or row to edit'),
-    viewSeg+'<div style="display:flex;align-items:center;gap:8px;background:#eef2ff;border:2px solid var(--brand);border-radius:12px;padding:7px 14px"><span style="font-size:12.5px;font-weight:700;color:var(--brand)">📅 '+jt('조회월','Month')+'</span><select onchange="fPsiYm=this.value;render()" style="font-size:17px;font-weight:800;color:var(--brand);border:none;background:transparent;box-shadow:none;padding:2px 4px;cursor:pointer">'+allYm.map(function(k){return '<option '+(ym===k?'selected':'')+'>'+k+'</option>';}).join('')+'</select></div>')
+    (_psiNeedsUpdate()?`<button class="btn" style="color:var(--warn)" onclick="updatePsiFromExcel()">🔄 ${jt('PSI 최신 데이터로 갱신','Refresh PSI data')}</button>`:'')
+    +viewSeg+'<div style="display:flex;align-items:center;gap:8px;background:#eef2ff;border:2px solid var(--brand);border-radius:12px;padding:7px 14px"><span style="font-size:12.5px;font-weight:700;color:var(--brand)">📅 '+jt('조회월','Month')+'</span><select onchange="fPsiYm=this.value;render()" style="font-size:17px;font-weight:800;color:var(--brand);border:none;background:transparent;box-shadow:none;padding:2px 4px;cursor:pointer">'+allYm.map(function(k){return '<option '+(ym===k?'selected':'')+'>'+k+'</option>';}).join('')+'</select></div>')
     +'<div class="grid actkpi" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px">'
     +'<div class="statcard"><div class="sv">'+totSellDevice.toLocaleString()+'</div><div class="sl">'+ym+' '+jt('장비 판매가능 재고','Device sellable stock')+'</div></div>'
     +'<div class="statcard"><div class="sv">'+totSellConsumable.toLocaleString()+'</div><div class="sl">'+ym+' '+jt('소모품 판매가능 재고','Consumable sellable stock')+'</div></div>'
