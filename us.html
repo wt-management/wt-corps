@@ -187,9 +187,10 @@ tbody tr{cursor:pointer}tbody tr:hover td{background:#f8f9ff}
   .fr3{grid-template-columns:1fr}
 }
 /* == WT-DESIGN-POLISH-v1 : 공통 디자인 정제(안전 패스) == */
-.card,.kpi-card,.stat-card{border-radius:16px}
+.card,.kpi-card,.stat-card{border-radius:16px!important;box-shadow:none!important;border:1px solid var(--line,#e6e9ef)!important} /*WT-DEEP-v2*/
 .modal-content{border-radius:18px}
 table{font-variant-numeric:tabular-nums}
+.kpi-value,.kpi-num,.stat-num,.stat-value,.big-num,.num-lg{font-variant-numeric:tabular-nums;letter-spacing:-.015em}
 .form-control:focus,.form-select:focus{border-color:var(--brand,#2563eb);box-shadow:0 0 0 3px rgba(37,99,235,.12);outline:none}
 .btn{border-radius:8px}
 </style>
