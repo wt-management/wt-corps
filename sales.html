@@ -53,6 +53,13 @@ tbody td input[type=number]{text-align:right}
 .toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,14px);background:#0f172a;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:300;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#94a3b8}
+.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:400}
+.modal-bg.show{display:flex}
+.modal-box{background:#fff;border-radius:14px;padding:20px;width:640px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-box h3{font-size:15px;font-weight:800;margin-bottom:8px;color:var(--ink)}
+.modal-box p{font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6}
+.modal-box textarea{width:100%;height:220px;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
 </style>
 </head>
 <body>
@@ -73,6 +80,17 @@ tbody td input[type=number]{text-align:right}
 </div>
 <div class="toast" id="toast"></div>
 <input type="file" id="xlsxInput" accept=".xlsx,.xls" class="hidden" onchange="if(this.files[0])handleExcelFile(this.files[0]);this.value='';">
+<div class="modal-bg" id="pasteModalBg" onclick="if(event.target===this)closePasteModal()">
+  <div class="modal-box">
+    <h3>📋 엑셀에서 붙여넣기</h3>
+    <p>원본 시트에서 <b>기안#~그룹#(43개 컬럼)</b>을 순서 그대로 드래그해 복사(Ctrl+C)한 뒤 아래에 붙여넣으세요(Ctrl+V). 헤더 행이 포함돼 있어도 자동으로 인식해 건너뜁니다. 기존 데이터는 지우지 않고 맨 위에 추가됩니다.</p>
+    <textarea id="pasteArea" placeholder="여기에 Ctrl+V로 붙여넣으세요"></textarea>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePasteModal()">취소</button>
+      <button class="btn btn-primary" onclick="applyPastedRows()"><i class="bi bi-clipboard-check"></i> 추가하기</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ═══ 해외영업관리 (Global Sales Order Tracker) — 독립 페이지 · cons_cache key='corp_sales_erp' ═══
@@ -183,6 +201,53 @@ async function handleExcelFile(file){
   }catch(e){alert('엑셀을 읽는 중 오류: '+e.message);}
 }
 
+// ── 엑셀에서 직접 붙여넣기(Ctrl+C/Ctrl+V) — 파일 업로드 없이 셀 범위를 복사해 텍스트로 붙여넣는 방식.
+// 기존 행은 지우지 않고 위에 추가한다(전체 교체가 아님). ──
+function openPasteModal(){
+  var ta=document.getElementById('pasteArea');ta.value='';
+  document.getElementById('pasteModalBg').classList.add('show');
+  setTimeout(function(){ta.focus();},50);
+}
+function closePasteModal(){document.getElementById('pasteModalBg').classList.remove('show');}
+function parseDateCell(s){
+  s=String(s==null?'':s).trim();if(!s)return '';
+  if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){var p=s.split('-');return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');}
+  var m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m)return m[3]+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0');
+  // 연도 없는 'M/D' 등은 임의로 연도를 추정하지 않고 원문 그대로 보관
+  return s;
+}
+function parseNumCell(s){
+  s=String(s==null?'':s).trim();if(s==='')return '';
+  var n=Number(s.replace(/[$₩,\s]/g,''));
+  return isNaN(n)?'':n;
+}
+function rowFromPasteCells(cells){
+  var o={id:uid()};
+  FIELDS.forEach(function(f,i){
+    var raw=cells[i]==null?'':String(cells[i]).trim();
+    if(DATE_FIELD_IDX.indexOf(i)>=0){o[f.k]=parseDateCell(raw);}
+    else if(f.t==='num'){o[f.k]=parseNumCell(raw);}
+    else{o[f.k]=raw;}
+  });
+  return o;
+}
+function applyPastedRows(){
+  var text=document.getElementById('pasteArea').value;
+  var lines=text.replace(/\r/g,'').split('\n').filter(function(l){return l.trim()!=='';});
+  if(!lines.length){alert('붙여넣은 내용이 없습니다.');return;}
+  var rowsCells=lines.map(function(l){return l.split('\t');});
+  var first=rowsCells[0].map(function(x){return String(x||'').trim();});
+  var looksHeader=FIELDS.some(function(f,i){return first[i]===f.l;});
+  if(looksHeader)rowsCells=rowsCells.slice(1);
+  if(!rowsCells.length){alert('데이터 행이 없습니다.');return;}
+  var out=rowsCells.map(rowFromPasteCells);
+  if(!confirm(out.length+'행을 맨 위에 추가합니다. 계속할까요?'))return;
+  D.rows=out.concat(D.rows||[]);
+  closePasteModal();PAGE=1;render();
+  toast(out.length+'행 추가됨 — 상단 "저장" 버튼을 눌러야 실제 반영됩니다');
+}
+
 // ── 부트 / 인증 (us.html·th.html과 동일한 SSO 패턴, 독립 파일) ──
 async function boot(){
   if(/^#at=/.test(location.hash||'')){try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}
@@ -281,6 +346,7 @@ function renderFbar(){
     '<select class="sel" onchange="PSIZE=this.value==\'all\'?1e9:+this.value;PAGE=1;render()"><option value="50">50행</option><option value="100">100행</option><option value="200">200행</option><option value="all">전체</option></select>'+
     '<button class="btn btn-primary" onclick="addRow()"><i class="bi bi-plus-lg"></i> 행 추가</button>'+
     '<button class="btn" onclick="document.getElementById(\'xlsxInput\').click()"><i class="bi bi-file-earmark-excel"></i> 엑셀 가져오기</button>'+
+    '<button class="btn" onclick="openPasteModal()"><i class="bi bi-clipboard"></i> 붙여넣기</button>'+
     '<button class="btn" onclick="exportCsv()"><i class="bi bi-download"></i> CSV</button>'+
     '<button class="btn btn-primary" onclick="saveAll()"><i class="bi bi-cloud-arrow-up"></i> 저장</button>';
 }
