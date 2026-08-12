@@ -237,7 +237,14 @@ function matchRow(r){
   return true;
 }
 function filtered(){return (D.rows||[]).filter(matchRow);}
-function setFQ(k,v){FQ[k]=v;PAGE=1;render();}
+function setFQ(k,v){
+  FQ[k]=v;PAGE=1;
+  // 검색창(input)이 포함된 fbar는 다시 그리지 않는다 — 매 타이핑마다 input DOM을
+  // 새로 만들면 포커스/커서 위치가 날아가 "한 글자만 입력돼요" 문제가 생김.
+  document.getElementById('rowcount').textContent=(D.rows||[]).length+'건';
+  renderKpis(D.rows||[]);
+  renderTable();
+}
 
 function render(){
   var rows=D.rows||[];
