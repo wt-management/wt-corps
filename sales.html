@@ -231,7 +231,11 @@ function matchRow(r){
   if(FQ.year&&String(r.orderDate||'').slice(0,4)!==FQ.year)return false;
   if(FQ.q){
     var q=FQ.q.toLowerCase();
-    var hay=[r.draftNo,r.quoteNo,r.orderNo,r.agent,r.desc,r.remark,r.country,r.serial,r.orderMonth].map(x=>String(x||'').toLowerCase()).join(' ');
+    // 수주월은 원본에 '7'처럼 숫자만 있거나 '7월'처럼 텍스트로 섞여 있어, 숫자만 있는 경우
+    // '7월' 형태도 검색어로 매칭되도록 양쪽 표기를 모두 넣어둔다.
+    var om=String(r.orderMonth||'');
+    var omAlt=/^\d+$/.test(om)?(om+'월'):'';
+    var hay=[r.draftNo,r.quoteNo,r.orderNo,r.agent,r.desc,r.remark,r.country,r.serial,om,omAlt].map(x=>String(x||'').toLowerCase()).join(' ');
     if(hay.indexOf(q)<0)return false;
   }
   return true;
