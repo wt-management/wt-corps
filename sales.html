@@ -231,7 +231,7 @@ function matchRow(r){
   if(FQ.year&&String(r.orderDate||'').slice(0,4)!==FQ.year)return false;
   if(FQ.q){
     var q=FQ.q.toLowerCase();
-    var hay=[r.draftNo,r.quoteNo,r.orderNo,r.agent,r.desc,r.remark,r.country,r.serial].map(x=>String(x||'').toLowerCase()).join(' ');
+    var hay=[r.draftNo,r.quoteNo,r.orderNo,r.agent,r.desc,r.remark,r.country,r.serial,r.orderMonth].map(x=>String(x||'').toLowerCase()).join(' ');
     if(hay.indexOf(q)<0)return false;
   }
   return true;
@@ -266,7 +266,7 @@ function renderFbar(){
     '<select class="sel" onchange="setFQ(\'region\',this.value)"><option value="">지역 전체</option>'+REGIONS.map(r=>'<option value="'+esc(r)+'"'+(FQ.region===r?' selected':'')+'>'+esc(r)+'</option>').join('')+'</select>'+
     '<select class="sel" onchange="setFQ(\'year\',this.value)"><option value="">연도 전체</option>'+years.map(y=>'<option value="'+y+'"'+(FQ.year===y?' selected':'')+'>'+y+'년</option>').join('')+'</select>'+
     '<input class="inp" placeholder="국가" style="width:100px" value="'+esc(FQ.country)+'" oninput="setFQ(\'country\',this.value)">'+
-    '<input class="inp grow" placeholder="🔍 기안#·견적#·주문#·대리점·Description·시리얼 검색" value="'+esc(FQ.q)+'" oninput="setFQ(\'q\',this.value)">'+
+    '<input class="inp grow" placeholder="🔍 기안#·견적#·주문#·대리점·Description·시리얼·수주월 검색" value="'+esc(FQ.q)+'" oninput="setFQ(\'q\',this.value)">'+
     '<select class="sel" onchange="PSIZE=this.value==\'all\'?1e9:+this.value;PAGE=1;render()"><option value="50">50행</option><option value="100">100행</option><option value="200">200행</option><option value="all">전체</option></select>'+
     '<button class="btn btn-primary" onclick="addRow()"><i class="bi bi-plus-lg"></i> 행 추가</button>'+
     '<button class="btn" onclick="document.getElementById(\'xlsxInput\').click()"><i class="bi bi-file-earmark-excel"></i> 엑셀 가져오기</button>'+
