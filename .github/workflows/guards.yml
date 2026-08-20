@@ -1,0 +1,16 @@
+name: 회귀 검사
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: node .github/check-guards.js
+      - run: node .github/check-syntax.js
+      - run: node .github/check-bulk.js
